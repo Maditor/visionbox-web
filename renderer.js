@@ -1,4 +1,87 @@
 (() => {
+  // ---------- tuong thich khi chay nhu WEB THUAN (vd host tren GitHub
+  // Pages), khong co preload.js that cua ban dong goi Electron ----------
+  // Ban desktop dung preload.js (nap qua <script src="preload.js">) de tao
+  // san cac ham window.appConfig / window.fileExport / window.openExternal,
+  // dua vao Node/Electron de doc-ghi file JSON that tren dia. Khi dem đúng
+  // nguyen index.html nay len 1 trang web thuong, preload.js do KHONG chay
+  // duoc (khong co Node/require trong trinh duyet) nen 3 API tren se KHONG
+  // TON TAI -> moi cho goi window.appConfig.set(...) de luu cache deu bao
+  // loi ngay (day chinh la ly do "khong tao duoc json" nhu da gap).
+  //
+  // Doan duoi day CHI tao ban thay the neu API that chua co san (kiem tra
+  // truoc khi gan) - nen:
+  //   - Chay tren web (GitHub Pages...): tu dung localStorage de luu/doc
+  //     JSON cache (thay cho file that tren dia), va tai file qua trinh
+  //     duyet (Blob + the <a download>) thay cho hop thoai Save native.
+  //   - Chay ban build app (Electron, co preload.js that): 3 dieu kien
+  //     "if (!window.xxx)" deu false ngay tu dau -> khong dụng gi den,
+  //     hanh vi giu nguyen 100% nhu truoc.
+  (function setupWebFallbackAPIs() {
+    const WEB_CONFIG_KEY = 'visionbox_config_cache_v1';
+
+    if (!window.appConfig || typeof window.appConfig.get !== 'function') {
+      window.appConfig = {
+        async get() {
+          try {
+            const raw = localStorage.getItem(WEB_CONFIG_KEY);
+            return raw ? JSON.parse(raw) : {};
+          } catch (err) {
+            console.warn('[web-fallback] appConfig.get loi, tra ve config rong:', err);
+            return {};
+          }
+        },
+        async set(cfg) {
+          try {
+            localStorage.setItem(WEB_CONFIG_KEY, JSON.stringify(cfg));
+            return true;
+          } catch (err) {
+            // Thuong gap nhat: vuot quota localStorage (~5-10MB) do cache
+            // qua nhieu anh/lich su. Khong lam vo app, chi bao loi ra console.
+            console.warn('[web-fallback] appConfig.set loi (co the do vuot dung luong luu tru cua trinh duyet):', err);
+            return false;
+          }
+        }
+      };
+    }
+
+    if (!window.fileExport || typeof window.fileExport.save !== 'function') {
+      window.fileExport = {
+        async save(content, format, suggestedName) {
+          try {
+            // Ban web nay xuat duoi dang van ban thuan (.txt) that su cho
+            // moi dinh dang - vi tao dung file .docx (OOXML) chuan can 1
+            // thu vien dung zip rieng, chua lam o ban nay. Neu can xuat
+            // .docx that tren web, bao lai de bo sung.
+            const ext = format === 'docx' ? 'txt' : (format || 'txt');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${suggestedName}.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            return true;
+          } catch (err) {
+            console.warn('[web-fallback] fileExport.save loi:', err);
+            return false;
+          }
+        }
+      };
+    }
+
+    if (!window.openExternal || typeof window.openExternal.open !== 'function') {
+      window.openExternal = {
+        async open(url) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+          return true;
+        }
+      };
+    }
+  })();
+
   // ---------- unified SVG icon set (dung chung cho markup tao dong bang JS) ----------
   const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
@@ -93,30 +176,6 @@
   const MAX_IMAGES = 100;
   const API_DELAY_MS = 2500;
 
-const isTauri = !!window.__TAURI__;
-
-function saveConfig(data) {
-  if (isTauri) {
-    window.appConfig.set(data);
-  } else {
-    try {
-      localStorage.setItem('visionbox_config', JSON.stringify(data));
-    } catch (e) {}
-  }
-}
-
-function loadConfig() {
-  if (isTauri) {
-    return window.appConfig.get();
-  } else {
-    try {
-      const raw = localStorage.getItem('visionbox_config');
-      return raw ? JSON.parse(raw) : {};
-    } catch (e) { return {}; }
-  }
-}
-
-  
 // Chặn toàn bộ phím tắt trình duyệt, chỉ cho phép các phím tắt ứng dụng
 document.addEventListener('keydown', (e) => {
   const ctrl = e.ctrlKey || e.metaKey;
