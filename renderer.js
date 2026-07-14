@@ -202,13 +202,20 @@ const allowedAppShortcuts = [
 ];  // <--- THÊM DẤU ] NÀY
 
 // Ctrl+A (chon tat ca) CHI duoc phep hoat dong binh thuong (chon het chu
-// trong o) khi dang o trong 2 o: prompt "Refine Translation" (nav-fab) va
-// o nhap Gemini API key. Ngoai 2 o nay - ke ca cac o nhap/text khac tren
-// trang - Ctrl+A se bi khoa (khong cho chon het trang) de tranh viec lo
-// tay bam Ctrl+A lam bôi đen ca trang gay kho chiu.
+// trong o) khi dang o trong: 2 o input "Refine Translation" (nav-fab) va
+// Gemini API key, HOAC dang o trong 1 o edit mode dang contenteditable="true":
+// - ocr-{index} / translation-{index}: edit mode cua tung anh
+// - summary-ocr-all / summary-translation-all: edit mode "All OCR" / "All Translation"
+// Ngoai cac truong hop nay - ke ca cac o nhap/text khac tren trang -
+// Ctrl+A se bi khoa (khong cho chon het trang) de tranh viec lo tay bam
+// Ctrl+A lam bôi đen ca trang gay kho chiu.
 const targetId = e.target && e.target.id;
+const isInEditableEditBox = e.target && e.target.isContentEditable &&
+  typeof targetId === 'string' &&
+  (targetId.startsWith('ocr-') || targetId.startsWith('translation-') ||
+   targetId === 'summary-ocr-all' || targetId === 'summary-translation-all');
 const isCtrlAAllowedHere = ctrl && !shift && key === 'a' &&
-  (targetId === 'nav-fab-prompt-input' || targetId === 'api-key-input');
+  (targetId === 'nav-fab-prompt-input' || targetId === 'api-key-input' || isInEditableEditBox);
 
 // Chỉ cho phép nếu là phím tắt của ứng dụng, hoặc các phím thông thường...
 const isAppShortcut = allowedAppShortcuts.some(s => 
@@ -2054,7 +2061,7 @@ function renderTextBlockEl(el, text, isError, changedSegments) {
     uploadedImages.forEach((imageData, index) => {
       const value = kind === 'ocr' ? imageData.ocrResult : imageData.translationResult;
       if (value) {
-        combined += (combined ? '\n\n' : '') + `=== Image ${index + 1}: ${imageData.file.name} ===\n${value}`;
+        combined += (combined ? '\n\n' : '') + `=== ${imageData.file.name} ===\n${value}`;
       }
     });
     return combined;
