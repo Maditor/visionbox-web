@@ -1,6 +1,4 @@
-// Shim de renderer.js giu nguyen 100% - khong can sua logic ben trong.
-// Electron truoc day dung contextBridge de expose window.appConfig,
-// gio dung Tauri invoke() nhung van giu dung API be ngoai: get()/set().
+
 (() => {
   const { invoke } = window.__TAURI__.core;
 

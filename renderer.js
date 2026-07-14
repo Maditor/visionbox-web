@@ -46,14 +46,89 @@
     }
 
     if (!window.fileExport || typeof window.fileExport.save !== 'function') {
+      // Tao file .docx (OOXML) THAT tren web bang JSZip (thu vien JS thuan,
+      // chay duoc trong trinh duyet, khong can Node/require). Chi dung khi
+      // KHONG co window.fileExport that (tuc la ban Electron/exe da co san
+      // API rieng qua preload.js va se KHONG bao gio vao nhanh nay) - nen
+      // sua o day khong anh huong gi den ban build exe.
+      //
+      // Yeu cau: file jszip.min.js phai duoc nap TRUOC renderer.js trong
+      // index.html, vi du:
+      //   <script src="jszip.min.js"></script>
+      //   <script src="renderer.js"></script>
+      const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+
+      function escapeXml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&apos;');
+      }
+
+      function buildDocumentXml(content) {
+        const lines = String(content).split(/\r\n|\r|\n/);
+        const paragraphs = lines.map(line => {
+          if (line.trim() === '') return '<w:p/>';
+          return `<w:p><w:r><w:t xml:space="preserve">${escapeXml(line)}</w:t></w:r></w:p>`;
+        }).join('');
+        return XML_HEADER +
+          '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+          '<w:body>' + paragraphs +
+          '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417"/></w:sectPr>' +
+          '</w:body></w:document>';
+      }
+
+      async function buildDocxBlob(content) {
+        if (typeof JSZip === 'undefined') {
+          throw new Error('Thieu thu vien JSZip (nho nap jszip.min.js truoc renderer.js trong index.html)');
+        }
+        const zip = new JSZip();
+        zip.file('[Content_Types].xml', XML_HEADER +
+          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+          '<Default Extension="xml" ContentType="application/xml"/>' +
+          '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+          '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+          '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+          '</Types>');
+        zip.folder('_rels').file('.rels', XML_HEADER +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+          '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+          '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+          '</Relationships>');
+        zip.folder('docProps').file('core.xml', XML_HEADER +
+          '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
+          'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+          `<dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created>` +
+          '</cp:coreProperties>');
+        zip.folder('docProps').file('app.xml', XML_HEADER +
+          '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>VisionBox Web Export</Application></Properties>');
+        zip.folder('word').file('document.xml', buildDocumentXml(content));
+        return zip.generateAsync({
+          type: 'blob',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        });
+      }
+
       window.fileExport = {
         async save(content, format, suggestedName) {
           try {
-            // Ban web nay xuat duoi dang van ban thuan (.txt) that su cho
-            // moi dinh dang - vi tao dung file .docx (OOXML) chuan can 1
-            // thu vien dung zip rieng, chua lam o ban nay. Neu can xuat
-            // .docx that tren web, bao lai de bo sung.
-            const ext = format === 'docx' ? 'txt' : (format || 'txt');
+            if (format === 'docx') {
+              const blob = await buildDocxBlob(content);
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${suggestedName}.docx`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+              return true;
+            }
+            const ext = format || 'txt';
             const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2061,7 +2136,7 @@ function renderTextBlockEl(el, text, isError, changedSegments) {
     uploadedImages.forEach((imageData, index) => {
       const value = kind === 'ocr' ? imageData.ocrResult : imageData.translationResult;
       if (value) {
-        combined += (combined ? '\n\n' : '') + `=== ${imageData.file.name} ===\n${value}`;
+        combined += (combined ? '\n\n' : '') + `=== Image ${index + 1}: ${imageData.file.name} ===\n${value}`;
       }
     });
     return combined;
