@@ -93,6 +93,30 @@
   const MAX_IMAGES = 100;
   const API_DELAY_MS = 2500;
 
+const isTauri = !!window.__TAURI__;
+
+function saveConfig(data) {
+  if (isTauri) {
+    window.appConfig.set(data);
+  } else {
+    try {
+      localStorage.setItem('visionbox_config', JSON.stringify(data));
+    } catch (e) {}
+  }
+}
+
+function loadConfig() {
+  if (isTauri) {
+    return window.appConfig.get();
+  } else {
+    try {
+      const raw = localStorage.getItem('visionbox_config');
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+}
+
+  
 // Chặn toàn bộ phím tắt trình duyệt, chỉ cho phép các phím tắt ứng dụng
 document.addEventListener('keydown', (e) => {
   const ctrl = e.ctrlKey || e.metaKey;
