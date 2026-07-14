@@ -1868,6 +1868,124 @@ mark.refined-word {
   border-radius: 2px;
   font-weight: 600;
 }
+/* ==========================================================================
+   MOBILE LAYOUT (<=680px)
+   Ap dung khi thu nho trinh duyet web xuong co dien thoai. Ban exe (Tauri)
+   dang khoa windows.minWidth = 980 trong tauri.conf.json nen se KHONG BAO
+   GIO cham breakpoint nay - toan bo khoi duoi day chi anh huong ban web,
+   dung nhu y muon "giu nguyen ben exe, chi lam responsive cho web".
+   ========================================================================== */
+@media (max-width: 680px) {
+
+  /* ---- ngan chan iOS Safari tu dong zoom khi focus input/select (chi xay
+     ra voi font-size < 16px) - phai dat truoc, cac rule ben duoi se ghi de
+     font-size rieng cho tung cho neu can ---- */
+  select, input[type="text"], input[type="password"] {
+    font-size: 16px;
+  }
+
+  /* ---- topbar: brand + controls xep doc thay vi nam ngang ---- */
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    gap: 12px;
+  }
+  .brand { width: 100%; }
+  .brand-sub { display: none; } /* tagline phu, an bot cho gon tren man hep */
+  .topbar-controls {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .topbar-controls .field { width: 100%; }
+  .topbar-controls select { width: 100%; min-width: 0; }
+  .input-with-btn { flex-wrap: wrap; }
+  .input-with-btn input { flex: 1 1 100%; min-width: 0; }
+
+  /* ---- lang bar: moi hang xep doc, cac field/nut chiem full be rong ---- */
+  .lang-bar { padding: 12px 14px; gap: 10px; }
+  .lang-bar-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .lang-bar-row .field { width: 100%; }
+  .lang-bar-row .field select { width: 100%; min-width: 0; }
+  .lang-arrow { display: none; } /* mui ten -> ko can khi lang da xep doc */
+  .toggle-field { align-self: flex-start; }
+  .upload-btn { margin-left: 0; align-self: stretch; width: 100%; }
+
+  .lang-bar-row-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  /* nut hang loat: luoi 2 cot cho de bam bang ngon tay, thay vi 1 hang dai
+     tran man hinh phai cuon ngang */
+  .batch-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .batch-actions .btn { width: 100%; }
+
+  .right-actions {
+    width: 100%;
+    justify-content: stretch;
+    gap: 8px;
+  }
+  .content-type-dropdown, .settings-dropdown { flex: 1; position: relative; }
+  .content-type-btn, .settings-btn { width: 100%; justify-content: center; }
+  .content-type-menu, .settings-panel {
+    left: 0;
+    right: 0;
+    width: auto;
+    min-width: 0;
+  }
+
+  /* ---- but toan chung: to hon de ban bang ngon tay de hon ---- */
+  .btn, .icon-btn { min-height: 40px; }
+
+  /* ---- vung ket qua: bot padding hai ben cho do phi khong gian ---- */
+  main { padding: 12px; }
+
+  /* ---- tung item ket qua: cho phep nut hanh dong xuong dong ---- */
+  .manga-item-actions { flex-wrap: wrap; row-gap: 6px; }
+  .manga-item-title span { max-width: 50vw; }
+  /* nut keo-de-resize anh chi dung duoc bang chuot (mousedown), tren dien
+     thoai se chi vuong tay khi cuon/cham - an di cho gon */
+  .image-resize-handle { display: none; }
+
+  /* ---- summary (All OCR / All translations): xep doc thay vi 2 cot ---- */
+  .summary {
+    flex-direction: column;
+    padding: 0 12px 16px;
+    gap: 12px;
+  }
+  .summary-head { flex-wrap: wrap; row-gap: 8px; }
+
+  /* ---- modal & bang thong ke: thu gon padding, luoi 2 cot ---- */
+  .modal-box { padding: 20px; }
+  .usage-stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* ---- cac thanh noi (selection/replace) + nav-fab: chua vao vung an
+     toan cua man hinh co "tai tho" (notch/home indicator) tren dien thoai ---- */
+  .nav-fab { left: 12px; bottom: max(14px, env(safe-area-inset-bottom)); }
+  .selection-bar { bottom: max(12px, env(safe-area-inset-bottom)); }
+  .replace-bar { width: calc(100vw - 20px); }
+}
+
+/* Man hinh dien thoai rat hep (vi du iPhone SE, ~360-375px) */
+@media (max-width: 380px) {
+  .batch-actions { grid-template-columns: 1fr; }
+  .usage-stats-grid { grid-template-columns: 1fr; }
+  .manga-item-title span { max-width: 40vw; }
+}
+
 /* ---------- tôn trọng lựa chọn "giảm chuyển động" của người dùng ----------
    Với ai bật Reduce Motion trong hệ điều hành (thường vì lý do sức khoẻ -
    dễ chóng mặt/khó chịu với hiệu ứng), tắt hầu hết animation/transition
