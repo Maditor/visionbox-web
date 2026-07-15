@@ -2136,7 +2136,7 @@ function renderTextBlockEl(el, text, isError, changedSegments) {
     uploadedImages.forEach((imageData, index) => {
       const value = kind === 'ocr' ? imageData.ocrResult : imageData.translationResult;
       if (value) {
-        combined += (combined ? '\n\n' : '') + `=== Image ${index + 1}: ${imageData.file.name} ===\n${value}`;
+        combined += (combined ? '\n\n' : '') + `=== ${imageData.file.name} ===\n${value}`;
       }
     });
     return combined;
