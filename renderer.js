@@ -1,22 +1,4 @@
 (() => {
-  // ---------- tuong thich khi chay nhu WEB THUAN (vd host tren GitHub
-  // Pages), khong co preload.js that cua ban dong goi Electron ----------
-  // Ban desktop dung preload.js (nap qua <script src="preload.js">) de tao
-  // san cac ham window.appConfig / window.fileExport / window.openExternal,
-  // dua vao Node/Electron de doc-ghi file JSON that tren dia. Khi dem đúng
-  // nguyen index.html nay len 1 trang web thuong, preload.js do KHONG chay
-  // duoc (khong co Node/require trong trinh duyet) nen 3 API tren se KHONG
-  // TON TAI -> moi cho goi window.appConfig.set(...) de luu cache deu bao
-  // loi ngay (day chinh la ly do "khong tao duoc json" nhu da gap).
-  //
-  // Doan duoi day CHI tao ban thay the neu API that chua co san (kiem tra
-  // truoc khi gan) - nen:
-  //   - Chay tren web (GitHub Pages...): tu dung localStorage de luu/doc
-  //     JSON cache (thay cho file that tren dia), va tai file qua trinh
-  //     duyet (Blob + the <a download>) thay cho hop thoai Save native.
-  //   - Chay ban build app (Electron, co preload.js that): 3 dieu kien
-  //     "if (!window.xxx)" deu false ngay tu dau -> khong dụng gi den,
-  //     hanh vi giu nguyen 100% nhu truoc.
   (function setupWebFallbackAPIs() {
     const WEB_CONFIG_KEY = 'visionbox_config_cache_v1';
 
