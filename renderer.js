@@ -1362,11 +1362,14 @@ Return ONLY the translation. Do not add any explanation or notes.`;
   // loi bi tach dong trong cung 1 bong thoai, hoac gop nham 2 bong khac
   // nhau). Prompt nay KHONG goi lai buildOcrPrompt va khong lam thay doi
   // hanh vi cua OCR/Translate thong thuong.
-  function buildRefineOcrPrompt(sourceLang, skipSfx, previousOcrText) {
+  function buildRefineOcrPrompt(sourceLang, skipSfx, previousOcrText, contentType) {
     const langName = LANG_NAMES[sourceLang] || sourceLang;
     const sfxNote = skipSfx
       ? `Sound-effect/onomatopoeia lettering drawn directly on the artwork (no bubble/box outline) should be EXCLUDED, same as before - do not add any SFX line.`
       : `If the page has sound-effect/onomatopoeia lettering drawn directly on the artwork (no bubble/box outline), keep it as its own separate line, placed exactly where it falls in true reading order among the bubbles.`;
+    const readingOrderNote = contentType === 'manga'
+      ? `The reading order MUST follow standard MANGA reading order: top to bottom, right to left. This is mandatory - re-check the order of every bubble against this direction, not just against the previous OCR result's order.`
+      : `The reading order MUST follow standard WEBTOON reading order: top to bottom, left to right. This is mandatory - re-check the order of every bubble against this direction, not just against the previous OCR result's order.`;
 
     return `You are proofreading and correcting an existing OCR scan of a page from a ${langName} comic, by comparing it carefully against the actual image.
 
@@ -1379,7 +1382,7 @@ YOUR TASK:
 1. Look carefully at the actual image and identify every individual bubble/box outline and every piece of SFX text (if applicable).
 2. For each bubble/box, ALL of its text - no matter how many visual rows it wraps into inside the bubble - must become exactly ONE output line (join wrapped fragments with a single space).
 3. If two DIFFERENT bubbles were wrongly merged into one line in the previous result, split them back into separate lines.
-4. Keep the SAME overall reading order used in the previous OCR result (top to bottom, following the page's natural bubble order) unless you find bubbles that are clearly out of order compared to the image.
+4. ${readingOrderNote}
 5. Do NOT translate anything - keep the original ${langName} text exactly as written, character for character.
 6. Do NOT invent, summarize, or drop any bubble's text - every bubble present in the image must be represented.
 7. ${sfxNote}
@@ -1638,7 +1641,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
     if (!apiKey) throw new Error('Missing API key');
     if (!imageData.ocrResult) throw new Error('No existing OCR result to refine.');
     const base64 = imageData.dataUrl.split(',')[1];
-    const prompt = buildRefineOcrPrompt(sourceLangSelect.value, skipSfxToggle.checked, imageData.ocrResult);
+    const prompt = buildRefineOcrPrompt(sourceLangSelect.value, skipSfxToggle.checked, imageData.ocrResult, currentContentType);
     let text = await callGemini({
       apiKey, model: getSelectedModel(), promptText: prompt, base64Image: base64, temperature: 0.1, itemIndex
     });
