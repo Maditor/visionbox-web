@@ -21,7 +21,7 @@
   <div class="brand">
     <div class="brand-text">
       <h1>VisionBox</h1>
-      <span class="brand-sub">
+      <span class="brand-sub" data-i18n="brand_sub">
         Inspired by MoeTruyen • Customized by Maditor
       </span>
     </div>
@@ -29,22 +29,22 @@
 
   <div class="topbar-controls">
     <div class="field">
-      <label for="model-select">Model</label>
+      <label for="model-select" data-i18n="model_label">Model</label>
       <select id="model-select">
         <option value="gemini-3.1-flash-lite" selected>gemini-3.1-flash-lite</option>
         <option value="gemini-2.5-flash">gemini-2.5-flash</option>
         <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
-        <option value="__custom__">Other model...</option>
+        <option value="__custom__" data-i18n="model_other">Other model...</option>
       </select>
       <input type="text" id="model-custom-input" placeholder="custom-model-name" style="display:none" />
     </div>
 
     <div class="field">
-      <label for="api-key-input">Gemini API Key</label>
+      <label for="api-key-input" data-i18n="api_key_label">Gemini API Key</label>
       <div class="input-with-btn">
-        <input type="password" id="api-key-input" placeholder="Enter API key from Google AI Studio" />
+        <input type="password" id="api-key-input" data-i18n="api_key_placeholder" data-i18n-placeholder placeholder="Enter API key from Google AI Studio" />
         <button id="toggle-key-btn" class="icon-btn" title="Show/hide key"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></span></button>
-        <button type="button" id="get-key-btn" class="icon-btn" title="Get an API key from Google AI Studio"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg></span> Get key</button>
+        <button type="button" id="get-key-btn" class="icon-btn" title="Get an API key from Google AI Studio"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg></span> <span data-i18n="get_key">Get key</span></button>
       </div>
     </div>
   </div>
@@ -53,35 +53,35 @@
 <section class="lang-bar">
   <div class="lang-bar-row">
     <div class="field">
-      <label for="source-lang-select">Source language</label>
+      <label for="source-lang-select" data-i18n="source_lang_label">Source language</label>
       <select id="source-lang-select">
-        <option value="ko">Korean (한국어)</option>
-        <option value="en">English</option>
-        <option value="zh">Chinese (中文)</option>
+        <option value="ko" data-i18n="lang_ko">Korean (한국어)</option>
+        <option value="en" data-i18n="lang_en">English</option>
+        <option value="zh" data-i18n="lang_zh">Chinese (中文)</option>
       </select>
     </div>
 
     <span class="lang-arrow">&rarr;</span>
 
     <div class="field">
-      <label for="target-lang-select">Translate to</label>
+      <label for="target-lang-select" data-i18n="target_lang_label">Translate to</label>
       <select id="target-lang-select">
-        <option value="vi">Vietnamese</option>
-        <option value="en">English</option>
-        <option value="ko">Korean (한국어)</option>
-        <option value="zh">Chinese (中文)</option>
-        <option value="ja">Japanese</option>
+        <option value="vi" data-i18n="lang_vi">Vietnamese</option>
+        <option value="en" data-i18n="lang_en">English</option>
+        <option value="ko" data-i18n="lang_ko">Korean (한국어)</option>
+        <option value="zh" data-i18n="lang_zh">Chinese (中文)</option>
+        <option value="ja" data-i18n="lang_ja">Japanese</option>
       </select>
     </div>
 
     <label class="toggle-field" for="skip-sfx-toggle">
       <input type="checkbox" id="skip-sfx-toggle" />
       <span class="toggle-switch"></span>
-      <span class="toggle-label">Skip SFX <small>(sound effects, onomatopoeia...)</small></span>
+      <span class="toggle-label" data-i18n="skip_sfx_label">Skip SFX <small>(sound effects, onomatopoeia...)</small></span>
     </label>
 
     <label class="upload-btn" for="image-input">
-      + Add images (max 100)
+      <span data-i18n="add_images">+ Add images (max 100)</span>
       <input type="file" id="image-input" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" multiple hidden />
     </label>
   </div>
@@ -89,10 +89,10 @@
   <!-- Hàng chứa batch actions + settings, căn đều hai bên -->
   <div class="lang-bar-row lang-bar-row-actions">
     <div class="batch-actions">
-      <button id="ocr-batch-btn" class="btn btn-secondary" disabled>OCR all</button>
-      <button id="translate-batch-btn" class="btn btn-primary" disabled>Translate all</button>
-      <button id="combined-batch-btn" class="btn btn-primary" disabled>OCR + Translate all</button>
-      <button id="clear-all-btn" class="btn btn-danger" disabled>Clear all</button>
+      <button id="ocr-batch-btn" class="btn btn-secondary" disabled data-i18n="ocr_all">OCR all</button>
+      <button id="translate-batch-btn" class="btn btn-primary" disabled data-i18n="translate_all">Translate all</button>
+      <button id="combined-batch-btn" class="btn btn-primary" disabled data-i18n="ocr_translate_all">OCR + Translate all</button>
+      <button id="clear-all-btn" class="btn btn-danger" disabled data-i18n="clear_all">Clear all</button>
     </div>
 
     <div class="right-actions">
@@ -102,32 +102,41 @@
           <span class="dropdown-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
         <div id="content-type-menu" class="content-type-menu">
-          <button type="button" class="content-type-option" data-value="webtoon">Webtoon</button>
-          <button type="button" class="content-type-option" data-value="manga">Manga</button>
+          <button type="button" class="content-type-option" data-value="webtoon" data-i18n="content_type_webtoon">Webtoon</button>
+          <button type="button" class="content-type-option" data-value="manga" data-i18n="content_type_manga">Manga</button>
         </div>
       </div>
 
       <div class="settings-dropdown">
-        <button type="button" id="settings-btn" class="btn btn-secondary settings-btn" title="Settings"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span> Settings</button>
+        <button type="button" id="settings-btn" class="btn btn-secondary settings-btn" title="Settings"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span> <span data-i18n="settings">Settings</span></button>
         <div id="settings-panel" class="settings-panel">
           <div class="field settings-field">
-            <label for="theme-select">Theme</label>
+            <label for="theme-select" data-i18n="theme_label">Theme</label>
             <select id="theme-select">
-              <option value="dark">Dark mode</option>
-              <option value="light">Light mode</option>
+              <option value="dark" data-i18n="dark_mode">Dark mode</option>
+              <option value="light" data-i18n="light_mode">Light mode</option>
             </select>
           </div>
+
+<!-- THÊM VÀO ĐÂY -->
+  <div class="field settings-field">
+    <label for="lang-select">Language / Ngôn ngữ</label>
+    <select id="lang-select">
+      <option value="en">English</option>
+      <option value="vi">Tiếng Việt</option>
+    </select>
+  </div>
 
           <!-- Các cài đặt khác sẽ thêm sau -->
           <div class="settings-divider"></div>
           <button type="button" id="replace-btn" class="btn btn-secondary settings-panel-btn" title="Find and replace (Ctrl+H)">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-            Replace
+            <span data-i18n="replace">Replace</span>
             <span class="settings-shortcut-hint">Ctrl+H</span>
           </button>
 
           <div class="field settings-field">
-            <label for="font-size-value">Font size (OCR &amp; Translation)</label>
+            <label for="font-size-value" data-i18n="font_size_label">Font size (OCR &amp; Translation)</label>
             <div class="font-size-control">
               <button type="button" id="font-size-decrease" class="icon-btn font-size-btn" title="Decrease font size">
                 <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
@@ -142,15 +151,15 @@
           <div class="settings-divider"></div>
           <button type="button" id="usage-btn" class="btn btn-secondary settings-panel-btn">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
-            API usage
+            <span data-i18n="api_usage">API usage</span>
           </button>
           <button type="button" id="view-logs-btn" class="btn btn-secondary settings-panel-btn">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span>
-            View logs
+            <span data-i18n="view_logs">View logs</span>
           </button>
 <button type="button" id="about-btn" class="btn btn-secondary settings-panel-btn">
   <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
-  About
+  <span data-i18n="about">About</span>
 </button>
 
         </div>
@@ -160,18 +169,18 @@
 </section>
 
 <section id="selection-bar" class="selection-bar" style="display:none">
-  <span class="selection-bar-count"><span id="selection-count">0</span> image(s) selected</span>
+  <span class="selection-bar-count"><span id="selection-count">0</span> <span id="selection-count-suffix" data-i18n="images_selected_suffix">image(s) selected</span></span>
   <div class="selection-bar-actions">
-    <button id="selection-ocr-btn" class="btn btn-secondary">OCR selected</button>
-    <button id="selection-translate-btn" class="btn btn-secondary">Translate selected</button>
+    <button id="selection-ocr-btn" class="btn btn-secondary" data-i18n="ocr_selected">OCR selected</button>
+    <button id="selection-translate-btn" class="btn btn-secondary" data-i18n="translate_selected">Translate selected</button>
     <div class="refine-dropdown">
-      <button type="button" id="selection-refine-btn" class="btn btn-secondary refine-btn" title="Refine OCR or Translation for selected images">Refine selected</button>
+      <button type="button" id="selection-refine-btn" class="btn btn-secondary refine-btn" title="Refine OCR or Translation for selected images" data-i18n="refine_selected">Refine selected</button>
       <div class="refine-menu refine-menu-up">
-        <button type="button" id="selection-refine-ocr-btn" class="refine-option" title="Re-scan bubble boundaries to fix split/merged lines">Refine OCR selected</button>
-        <button type="button" id="selection-refine-translate-btn" class="refine-option" title="Refine translation for selected images">Refine Translation selected</button>
+        <button type="button" id="selection-refine-ocr-btn" class="refine-option" title="Re-scan bubble boundaries to fix split/merged lines" data-i18n="refine_ocr_selected">Refine OCR selected</button>
+        <button type="button" id="selection-refine-translate-btn" class="refine-option" title="Refine translation for selected images" data-i18n="refine_translate_selected">Refine Translation selected</button>
       </div>
     </div>
-    <button id="selection-cancel-btn" class="btn btn-danger">Deselect</button>
+    <button id="selection-cancel-btn" class="btn btn-danger" data-i18n="deselect">Deselect</button>
   </div>
 </section>
 
@@ -182,9 +191,9 @@
   <div class="replace-bar-row replace-bar-row-main">
     <span class="icon replace-bar-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
 
-    <input type="text" id="replace-find-input" class="replace-input" placeholder="Find..." />
+    <input type="text" id="replace-find-input" class="replace-input" placeholder="Find..." data-i18n="find_placeholder" data-i18n-placeholder />
     <span class="replace-bar-arrow">&rarr;</span>
-    <input type="text" id="replace-with-input" class="replace-input" placeholder="Replace with..." />
+    <input type="text" id="replace-with-input" class="replace-input" placeholder="Replace with..." data-i18n="replace_with_placeholder" data-i18n-placeholder />
 
     <span id="replace-match-count" class="replace-match-count">0/0</span>
 
@@ -204,30 +213,30 @@
 
   <div class="replace-bar-row replace-bar-row-options">
     <div class="replace-scope-group">
-      <span class="replace-scope-label">Search in:</span>
+      <span class="replace-scope-label" data-i18n="search_in">Search in:</span>
       <label class="replace-scope-chip">
         <input type="checkbox" id="replace-scope-ocr" checked />
-        <span>OCR</span>
+        <span data-i18n="ocr">OCR</span>
       </label>
       <label class="replace-scope-chip">
         <input type="checkbox" id="replace-scope-translation" checked />
-        <span>Translation</span>
+        <span data-i18n="translation">Translation</span>
       </label>
     </div>
 
     <label class="replace-scope-chip replace-case-chip">
       <input type="checkbox" id="replace-whole-word" checked />
-      <span>Whole word</span>
+      <span data-i18n="whole_word">Whole word</span>
     </label>
 
     <label class="replace-scope-chip">
       <input type="checkbox" id="replace-case-sensitive" />
-      <span>Match case</span>
+      <span data-i18n="match_case">Match case</span>
     </label>
 
     <div class="replace-bar-actions">
-      <button type="button" id="replace-one-btn" class="btn btn-secondary">Replace</button>
-      <button type="button" id="replace-all-btn" class="btn btn-primary">Replace all</button>
+      <button type="button" id="replace-one-btn" class="btn btn-secondary" data-i18n="replace_one">Replace</button>
+      <button type="button" id="replace-all-btn" class="btn btn-primary" data-i18n="replace_all">Replace all</button>
     </div>
   </div>
 </section>
@@ -235,7 +244,7 @@
 <main id="results-area">
   <div id="dropzone" class="dropzone">
     <div id="placeholder" class="placeholder">
-      <p>Drag and drop images here, or click "+ Add images" to start.</p>
+      <p data-i18n="dropzone_placeholder">Drag and drop images here, or click "+ Add images" to start.</p>
     </div>
     <div id="manga-results"></div>
   </div>
@@ -285,8 +294,8 @@
     <div id="nav-fab-selection-head" class="nav-fab-selection-head" style="display:none">
       <span id="nav-fab-selection-count">0 selected</span>
       <div class="nav-fab-selection-actions">
-        <button type="button" id="nav-fab-selection-all">Select all</button>
-        <button type="button" id="nav-fab-selection-clear">Clear</button>
+        <button type="button" id="nav-fab-selection-all" data-i18n="select_all">Select all</button>
+        <button type="button" id="nav-fab-selection-clear" data-i18n="clear_selected">Clear</button>
       </div>
     </div>
     <div id="nav-fab-list" class="nav-fab-list"></div>
@@ -330,6 +339,8 @@
   id="nav-fab-prompt-input" 
   class="nav-fab-prompt-input" 
   placeholder="Prompt..." 
+  data-i18n="prompt_placeholder"
+  data-i18n-placeholder
   autocomplete="off" 
   autocorrect="off" 
   autocapitalize="off" 
@@ -337,8 +348,8 @@
   data-lpignore="true"
 >
       <div class="nav-fab-prompt-actions">
-        <button type="button" id="nav-fab-prompt-cancel" class="nav-fab-prompt-btn nav-fab-prompt-cancel">Cancel</button>
-        <button type="button" id="nav-fab-prompt-run" class="nav-fab-prompt-btn nav-fab-prompt-run">Refine</button>
+        <button type="button" id="nav-fab-prompt-cancel" class="nav-fab-prompt-btn nav-fab-prompt-cancel" data-i18n="cancel_btn">Cancel</button>
+        <button type="button" id="nav-fab-prompt-run" class="nav-fab-prompt-btn nav-fab-prompt-run" data-i18n="ok_btn">OK</button>
       </div>
     </div>
   </div>
@@ -362,6 +373,7 @@
 
 <script src="jszip.min.js"></script>
 <script src="preload.js"></script>
+<script src="strings.js"></script>
 <script src="renderer.js"></script>
 </body>
 </html>

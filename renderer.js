@@ -230,6 +230,58 @@
   const replaceOneBtn = document.getElementById('replace-one-btn');
   const replaceAllBtn = document.getElementById('replace-all-btn');
 
+let currentLang = 'en';
+
+function t(key, params) {
+  let str = STRINGS[currentLang]?.[key] || STRINGS.en[key] || key;
+  if (params) {
+    Object.keys(params).forEach(k => {
+      str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), params[k]);
+    });
+  }
+  return str;
+}
+function applyLanguage(lang) {
+  currentLang = lang;
+  // Cập nhật các phần tử có data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (el.hasAttribute('data-i18n-placeholder')) {
+      el.placeholder = t(key);
+    } else if (el.hasAttribute('data-i18n-title')) {
+      el.title = t(key);
+    } else if (el.hasAttribute('data-i18n-value')) {
+      el.value = t(key);
+    } else {
+      el.textContent = t(key);
+    }
+  });
+
+  // Cập nhật các phần tử không có data-i18n (cần gán trực tiếp)
+  // Ví dụ: batch buttons, selection bar, summary, ...
+  document.getElementById('ocr-batch-btn').textContent = t('ocr_all');
+  document.getElementById('translate-batch-btn').textContent = t('translate_all');
+  document.getElementById('combined-batch-btn').textContent = t('ocr_translate_all');
+  document.getElementById('clear-all-btn').textContent = t('clear_all');
+  document.querySelector('.brand-sub').textContent = t('brand_sub');
+  // ... thêm các phần tử khác tương tự
+
+  // Cập nhật các label
+  document.querySelector('label[for="source-lang-select"]').textContent = t('source_lang_label');
+  document.querySelector('label[for="target-lang-select"]').textContent = t('target_lang_label');
+  document.querySelector('label[for="skip-sfx-toggle"] .toggle-label').textContent = t('skip_sfx_label');
+  // ... v.v.
+
+  // Cập nhật lại option "Ngôn ngữ nguồn" (select này bị JS ghi đè innerHTML
+  // trong applyContentType() nên data-i18n không tự quét tới được)
+  applyContentType(currentContentType, sourceLangSelect.value);
+
+  // Cập nhật selection bar
+  updateSelectionUI(); // Hàm này sẽ được sửa để dùng t() bên trong
+
+  // Lưu config
+  scheduleSaveConfig();
+}
   const MAX_IMAGES = 100;
   const API_DELAY_MS = 2500;
 
@@ -253,19 +305,9 @@ const allowedAppShortcuts = [
   { ctrl: true, shift: false, key: 'z' },     // Ctrl+Z: Undo replace
   { ctrl: true, shift: false, key: 'c' },     // Ctrl+C: Copy (mo khoa, dung binh thuong o moi noi)
   { ctrl: true, shift: false, key: 'v' }      // Ctrl+V: Paste (mo khoa, dung binh thuong o moi noi)
-  // Luu y: Ctrl+A (khong Shift) KHONG con nam trong danh sach nay nua -
-  // no duoc xu ly rieng ben duoi, chi cho phep bam khi dang o trong 1
-  // trong 2 o input duoc chi dinh (xem isCtrlAAllowedHere).
-];  // <--- THÊM DẤU ] NÀY
+];  
 
-// Ctrl+A (chon tat ca) CHI duoc phep hoat dong binh thuong (chon het chu
-// trong o) khi dang o trong: 2 o input "Refine Translation" (nav-fab) va
-// Gemini API key, HOAC dang o trong 1 o edit mode dang contenteditable="true":
-// - ocr-{index} / translation-{index}: edit mode cua tung anh
-// - summary-ocr-all / summary-translation-all: edit mode "All OCR" / "All Translation"
-// Ngoai cac truong hop nay - ke ca cac o nhap/text khac tren trang -
-// Ctrl+A se bi khoa (khong cho chon het trang) de tranh viec lo tay bam
-// Ctrl+A lam bôi đen ca trang gay kho chiu.
+
 const targetId = e.target && e.target.id;
 const isInEditableEditBox = e.target && e.target.isContentEditable &&
   typeof targetId === 'string' &&
@@ -363,7 +405,16 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     syncAllImageSectionHeights._t = setTimeout(syncAllImageSectionHeights, 150);
   });
 
+  // LANG_NAMES: dung de dua vao PROMPT gui cho AI (luon giu tieng Anh, khong
+  // doi theo ngon ngu giao dien) - KHONG dung de hien thi len UI.
   const LANG_NAMES = { ko: 'Korean', en: 'English', vi: 'Vietnamese', zh: 'Chinese', ja: 'Japanese', 'manga-en': 'English' };
+  // LANG_DISPLAY_KEYS + langDisplayName(): dung de HIEN THI len UI (dropdown,
+  // hop thoai xac nhan...), tu dong doi theo ngon ngu giao dien hien tai.
+  const LANG_DISPLAY_KEYS = { ko: 'lang_ko', en: 'lang_en', vi: 'lang_vi', zh: 'lang_zh', ja: 'lang_ja', 'manga-en': 'lang_manga_en' };
+  function langDisplayName(code) {
+    const key = LANG_DISPLAY_KEYS[code];
+    return key ? t(key) : code;
+  }
 
   // ---------- config + project persistence ----------
   // Luu chung 1 file json (qua window.appConfig): moi lan set() se GHI DE
@@ -396,7 +447,8 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
       contentFontSize: contentFontSize,
       project: buildProjectPayload(),
       usageStats: usageStats,
-      errorLogs: errorLogs
+      errorLogs: errorLogs,
+      language: currentLang,
     };
   }
 
@@ -443,7 +495,12 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     if (typeof cfg.contentFontSize === 'number' && !Number.isNaN(cfg.contentFontSize)) {
       applyFontSize(cfg.contentFontSize);
     }
-
+{
+  const langToApply = cfg.language || 'en';
+  const langSelectEl = document.getElementById('lang-select');
+  if (langSelectEl) langSelectEl.value = langToApply;
+  applyLanguage(langToApply);
+}
     if (cfg.usageStats && typeof cfg.usageStats === 'object') {
       usageStats = {
         totalCalls: Number(cfg.usageStats.totalCalls) || 0,
@@ -468,7 +525,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
         });
       });
       if (pendingRestoreMap.size > 0) {
-        showToast(`Cache ready (${pendingRestoreMap.size})`, 'info', 5000);
+        showToast(t('cache_ready', { count: pendingRestoreMap.size }), 'info', 5000);
       }
     }
   }
@@ -489,7 +546,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
 
   async function performAutoSave() {
     if (uploadedImages.length === 0) return; // khong co gi de luu thi khoi lam phien
-    const toastEl = showToast('Saving...', 'info', 60000);
+    const toastEl = showToast(t('saving'), 'info', 60000);
     try {
       await window.appConfig.set(buildConfigPayload());
       updateToast(toastEl, 'Saved', 'success', 2500);
@@ -532,6 +589,11 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     scheduleSaveConfig();
   });
 
+document.getElementById('lang-select').addEventListener('change', (e) => {
+  currentLang = e.target.value;
+  applyLanguage(currentLang); // Hàm này sẽ được viết ở bước 4
+  scheduleSaveConfig();
+});
   // ---------- font size cua OCR + Translation (tung anh) va phan tong hop ----------
   // Dung chung 1 gia tri (bien CSS --content-font-size) cho .line-text
   // (OCR/Translation cua tung anh) va .summary-body (All OCR/All
@@ -558,37 +620,33 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
   // ---------- content type (Webtoon / Manga) - loc options cua source language ----------
   const SOURCE_LANG_OPTIONS = {
     webtoon: [
-      { value: 'ko', label: 'Korean (한국어)' },
-      { value: 'en', label: 'English' },
-      { value: 'zh', label: 'Chinese (中文)' }
+      { value: 'ko', i18nKey: 'lang_ko' },
+      { value: 'en', i18nKey: 'lang_en' },
+      { value: 'zh', i18nKey: 'lang_zh' }
     ],
     manga: [
-      { value: 'ja', label: 'Manga Japanese' },
-      { value: 'manga-en', label: 'Manga English' }
+      { value: 'ja', i18nKey: 'lang_manga_ja' },
+      { value: 'manga-en', i18nKey: 'lang_manga_en' }
     ]
   };
 
   function applyContentType(type, preferredValue) {
     const options = SOURCE_LANG_OPTIONS[type] || SOURCE_LANG_OPTIONS.webtoon;
     const currentValue = preferredValue ?? sourceLangSelect.value;
-    sourceLangSelect.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+    sourceLangSelect.innerHTML = options.map(o => `<option value="${o.value}">${t(o.i18nKey)}</option>`).join('');
     const stillValid = options.some(o => o.value === currentValue);
     sourceLangSelect.value = stillValid ? currentValue : options[0].value;
   }
 
-  // Nut content-type gio la mot dropdown don gian (nut + submenu), khong
-  // con la <select> nam trong settings-panel nua - xem #content-type-btn /
-  // #content-type-menu trong index.html. currentContentType la nguon "that"
-  // duy nhat cho gia tri hien tai; setContentTypeUI() chi lo cap nhat UI
-  // (nhan tren nut + trang thai active trong submenu), khong tu goi
-  // applyContentType/scheduleSaveConfig - noi goi no tu quyet dinh co can
-  // lam nhung viec do hay khong (vd luc loadConfig() thi khong can save lai).
+ 
   let currentContentType = 'webtoon';
-  const CONTENT_TYPE_LABELS = { webtoon: 'Webtoon', manga: 'Manga' };
+  function contentTypeLabel(type) {
+    return type === 'manga' ? t('content_type_manga') : t('content_type_webtoon');
+  }
 
   function setContentTypeUI(type) {
     currentContentType = type;
-    contentTypeBtnLabel.textContent = CONTENT_TYPE_LABELS[type] || CONTENT_TYPE_LABELS.webtoon;
+    contentTypeBtnLabel.textContent = contentTypeLabel(type);
     contentTypeMenu.querySelectorAll('.content-type-option').forEach(opt => {
       opt.classList.toggle('active', opt.dataset.value === type);
     });
@@ -652,7 +710,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
   function undoLastReplace() {
     const changes = replaceUndoStack.pop();
     if (!changes) {
-      showToast('Nothing to undo', 'info');
+      showToast(t('nothing_to_undo'), 'info');
       return;
     }
     changes.forEach(({ imageIndex, kind, previousText }) => {
@@ -664,7 +722,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     });
     updateSummary();
     recomputeReplaceMatches(true);
-    showToast('Replace undone', 'success');
+    showToast(t('replace_undone'), 'success');
   }
 
   function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -844,7 +902,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     pushReplaceUndo(undoChanges);
     updateSummary();
     recomputeReplaceMatches(false);
-    showToast(replacedCount > 0 ? `Replaced ${replacedCount} occurrence(s)` : 'No matches found', replacedCount > 0 ? 'success' : 'info');
+    showToast(replacedCount > 0 ? t('replaced_count', { count: replacedCount }) : t('no_matches_found'), replacedCount > 0 ? 'success' : 'info');
   }
 
   function openReplaceBar() {
@@ -925,13 +983,13 @@ getKeyBtn.addEventListener('click', async () => {
     }
     window.open(url, '_blank');
   } catch (err) {
-    showToast('Open failed', 'error', 6000);
+    showToast(t('open_failed'), 'error', 6000);
   }
 });
 
   // ---------- alert dialog (dung chung pill voi confirm, chi 1 nut OK) ----------
   function showAlertDialog(message) {
-    return showConfirmDialog(message, 'OK', '', true).then(() => {});
+    return showConfirmDialog(message, t('ok_btn'), '', true).then(() => {});
   }
 
   // Kiem tra o API key da co noi dung chua TRUOC KHI lam bat ky viec gi khac
@@ -946,7 +1004,7 @@ getKeyBtn.addEventListener('click', async () => {
   function getApiKey() {
     const key = apiKeyInput.value.trim();
     if (!key) {
-      showToast('Enter API key', 'error');
+      showToast(t('enter_api_key_first'), 'error');
       apiKeyInput.focus();
       return null;
     }
@@ -1121,7 +1179,7 @@ if (activeConfirm) {
   // voi toast/processing (xem syncPillState()). Vi confirm co the duoc mo tu
   // BEN TRONG mot modal khac dang mo (vd nut Reset counter trong info-modal),
   // nav-fab duoc bump z-index tam thoi (.overlay-active) de luon noi len tren.
-  function showConfirmDialog(message, yesLabel = 'Yes', noLabel = 'No', alertMode = false) {
+  function showConfirmDialog(message, yesLabel = t('yes_btn'), noLabel = t('no_btn'), alertMode = false) {
     return new Promise((resolve) => {
       navFabConfirmText.textContent = message.replace(/\n/g, ' ');
       navFabConfirmYesBtn.textContent = alertMode ? 'OK' : yesLabel;
@@ -1389,13 +1447,13 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   function enableRefineOcrButton(index) {
     const item = mangaResults.querySelector(`[data-index="${index}"]`);
     const btn = item?.querySelector('.refine-ocr-option');
-    if (btn) { btn.title = 'Re-scan bubble boundaries to fix split/merged lines'; }
+    if (btn) { btn.title = t('refine_ocr_tooltip'); }
   }
 
   function enableRefineTranslateButton(index) {
     const item = mangaResults.querySelector(`[data-index="${index}"]`);
     const btn = item?.querySelector('.refine-translate-option');
-    if (btn) { btn.title = 'Refine translation with an optional custom instruction'; }
+    if (btn) { btn.title = t('refine_translate_tooltip'); }
   }
 
   function showRetryStopButton(index) {
@@ -1413,13 +1471,13 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   }
 
   async function onStopRetryClick(index) {
-    const confirmed = await showConfirmDialog('Hit 429 rate limit. Stop retry queue??');
+    const confirmed = await showConfirmDialog(t('rate_limit_stop_confirm'));
     if (!confirmed) return;
     retryQueueCancelled = true;
     stopRequested = true;
     if (activeRetry) activeRetry.cancel();
     hideRetryStopButton(index);
-    showToast('Retry stopped', 'info');
+    showToast(t('retry_stopped'), 'info');
   }
 
   async function callGemini({ apiKey, model, promptText, base64Image, mimeType, temperature, maxOutputTokens, itemIndex }) {
@@ -1467,7 +1525,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
           } catch (_) {}
           throw new Error(msg);
         }
-        showToast(`Rate limited (${RETRY_WAIT_MS / 1000}s)`, 'warning');
+        showToast(t('rate_limited', { seconds: RETRY_WAIT_MS / 1000 }), 'warning');
         showRetryStopButton(itemIndex);
 
         const cancelled = await new Promise((resolve) => {
@@ -1623,61 +1681,61 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
         <div class="manga-item-header">
           <div class="manga-item-title">
             <div class="image-size-dropdown">
-              <button type="button" class="image-size-btn" title="Adjust image size"><span class="icon">${ICON_RESIZE}</span></button>
+              <button type="button" class="image-size-btn" title="${t('adjust_image_size')}"><span class="icon">${ICON_RESIZE}</span></button>
               <div class="image-size-menu">
-                <span class="image-size-menu-label">Image size</span>
-                <input type="range" class="image-size-slider" min="160" max="520" step="10" value="240" title="Resize image preview">
-                <button type="button" class="image-size-reset" title="Reset to original size"><span class="icon">${ICON_REFRESH}</span></button>
+                <span class="image-size-menu-label">${t('image_size')}</span>
+                <input type="range" class="image-size-slider" min="160" max="520" step="10" value="240" title="${t('resize_preview')}">
+                <button type="button" class="image-size-reset" title="${t('reset_original_size')}"><span class="icon">${ICON_REFRESH}</span></button>
               </div>
             </div>
-            <span>Image ${index + 1}: ${imageData.file.name}</span>
-            <small>${Math.round(imageData.file.size / 1024)} KB</small>
+            <span>${t('image_title', { index: index + 1, name: imageData.file.name })}</span>
+            <small>${t('size_kb', { size: Math.round(imageData.file.size / 1024) })}</small>
           </div>
           <div class="manga-item-actions">
-            <button class="btn btn-danger stop-retry-btn" style="display:none" title="A 429 rate limit is being retried. Click to stop the queue.">Stop retry</button>
-            <span class="status-badge">idle</span>
-            <button class="btn btn-secondary edit-item-btn">Edit mode</button>
-            <button class="btn btn-secondary single-ocr-btn">OCR</button>
-            <button class="btn btn-secondary single-translate-btn" ${imageData.ocrResult ? '' : 'disabled'} title="${imageData.ocrResult ? '' : 'Run OCR first'}">Translate</button>
+            <button class="btn btn-danger stop-retry-btn" style="display:none" title="${t('stop_retry_title')}">${t('stop_retry')}</button>
+            <span class="status-badge">${t('status_idle')}</span>
+            <button class="btn btn-secondary edit-item-btn">${t('edit_mode')}</button>
+            <button class="btn btn-secondary single-ocr-btn">${t('ocr_single')}</button>
+            <button class="btn btn-secondary single-translate-btn" ${imageData.ocrResult ? '' : 'disabled'} title="${imageData.ocrResult ? '' : t('run_ocr_first')}">${t('translate_single')}</button>
             <div class="refine-dropdown">
-              <button type="button" class="btn btn-secondary refine-btn" title="Refine OCR or Translation">Refine</button>
+              <button type="button" class="btn btn-secondary refine-btn" title="${t('refine_tooltip')}">${t('refine')}</button>
               <div class="refine-menu">
-                <button type="button" class="refine-option refine-ocr-option" title="${imageData.ocrResult ? 'Re-scan bubble boundaries to fix split/merged lines' : 'Run OCR first'}">Refine OCR</button>
-                <button type="button" class="refine-option refine-translate-option" title="${imageData.translationResult ? 'Refine translation with an optional custom instruction' : 'Run Translate first'}">Refine Translation</button>
+                <button type="button" class="refine-option refine-ocr-option" title="${imageData.ocrResult ? t('refine_ocr_tooltip') : t('run_ocr_first')}">${t('refine_ocr')}</button>
+                <button type="button" class="refine-option refine-translate-option" title="${imageData.translationResult ? t('refine_translate_tooltip') : t('run_translate_first')}">${t('refine_translate')}</button>
               </div>
             </div>
-            <input type="checkbox" class="select-checkbox item-select-checkbox" style="margin-left: auto;" title="Select this image" ${selectedUids.has(imageData.uid) ? 'checked' : ''}>
-            <button class="btn btn-danger delete-single-btn" title="Delete this image"><span class="icon">${ICON_X}</span></button>
+            <input type="checkbox" class="select-checkbox item-select-checkbox" style="margin-left: auto;" title="${t('select_this_image')}" ${selectedUids.has(imageData.uid) ? 'checked' : ''}>
+            <button class="btn btn-danger delete-single-btn" title="${t('delete_this_image')}"><span class="icon">${ICON_X}</span></button>
           </div>
         </div>
         <div class="manga-item-content">
           <div class="manga-image-section">
-            <img src="${imageData.dataUrl}" alt="Image ${index + 1}" draggable="false">
+            <img src="${imageData.dataUrl}" alt="${t('image_title', { index: index + 1, name: imageData.file.name })}" draggable="false">
           </div>
-          <div class="image-resize-handle" title="Drag to resize"></div>
+          <div class="image-resize-handle" title="${t('drag_to_resize')}"></div>
           <div class="manga-text-section">
 <div class="text-column">
   <div class="text-column-header">
-    <span>OCR</span>
+    <span>${t('ocr_column')}</span>
     <div style="display:flex; gap:4px;">
-      <button class="copy-btn" data-copy-target="ocr-${index}">Copy</button>
-      <button class="history-btn" data-type="ocr" data-index="${index}" title="View versions">Vers</button>
+      <button class="copy-btn" data-copy-target="ocr-${index}">${t('copy')}</button>
+      <button class="history-btn" data-type="ocr" data-index="${index}" title="${t('view_versions_title')}">${t('versions')}</button>
     </div>
   </div>
   <div class="text-content-body">
-    <div id="ocr-${index}" class="text-content empty" data-placeholder="OCR not performed"></div>
+    <div id="ocr-${index}" class="text-content empty" data-placeholder="${t('ocr_placeholder')}"></div>
   </div>
 </div>
 <div class="text-column">
   <div class="text-column-header">
-    <span>Translation</span>
+    <span>${t('translation_column')}</span>
     <div style="display:flex; gap:4px;">
-      <button class="copy-btn" data-copy-target="translation-${index}">Copy</button>
-      <button class="history-btn" data-type="translation" data-index="${index}" title="View versions">Vers</button>
+      <button class="copy-btn" data-copy-target="translation-${index}">${t('copy')}</button>
+      <button class="history-btn" data-type="translation" data-index="${index}" title="${t('view_versions_title')}">${t('versions')}</button>
     </div>
   </div>
   <div class="text-content-body">
-    <div id="translation-${index}" class="text-content empty" data-placeholder="Translation not performed"></div>
+    <div id="translation-${index}" class="text-content empty" data-placeholder="${t('translation_placeholder')}"></div>
   </div>
 </div>
       </div>
@@ -1769,7 +1827,7 @@ item.querySelectorAll('.history-btn').forEach(btn => {
     if (!item) return;
     item.classList.remove('processing', 'completed', 'error');
     const badge = item.querySelector('.status-badge');
-    const map = { processing: 'processing', completed: 'completed', error: 'error', idle: 'idle' };
+    const map = { processing: t('status_processing'), completed: t('status_completed'), error: t('status_error'), idle: t('status_idle') };
     if (status !== 'idle') item.classList.add(status);
     badge.textContent = map[status] || status;
 
@@ -2131,11 +2189,11 @@ function renderTextBlockEl(el, text, isError, changedSegments) {
     const hasTranslation = !!allTranslation;
 
     if (!editingState['summary-ocr-all']) {
-      summaryOcrAll.textContent = hasOcr ? allOcr : 'No OCR results yet';
+      summaryOcrAll.textContent = hasOcr ? allOcr : t('no_ocr');
       summaryOcrAll.classList.toggle('empty', !hasOcr);
     }
     if (!editingState['summary-translation-all']) {
-      summaryTranslationAll.textContent = hasTranslation ? allTranslation : 'No translations yet';
+      summaryTranslationAll.textContent = hasTranslation ? allTranslation : t('no_translation');
       summaryTranslationAll.classList.toggle('empty', !hasTranslation);
     }
     if (hasOcr || hasTranslation) summarySection.style.display = 'flex';
@@ -2154,16 +2212,16 @@ function renderTextBlockEl(el, text, isError, changedSegments) {
       target.removeAttribute('contenteditable');
       target.classList.remove('editing');
       const editBtn = document.querySelector(`.edit-mode-btn[data-edit-target="${targetId}"]`);
-      if (editBtn) { editBtn.textContent = 'Edit mode'; editBtn.classList.remove('active'); }
+      if (editBtn) { editBtn.textContent = t('edit_mode'); editBtn.classList.remove('active'); }
     }
 
     const combined = computeCombinedText(kind);
     const has = !!combined;
-    target.textContent = has ? combined : (kind === 'ocr' ? 'No OCR results yet' : 'No translations yet');
+    target.textContent = has ? combined : (kind === 'ocr' ? t('no_ocr') : t('no_translation'));
     target.classList.toggle('empty', !has);
     if (has) summarySection.style.display = 'flex';
     renderNavFabList();
-    showToast('Reloaded', 'success');
+    showToast(t('reloaded'), 'success');
   }
 
   // ---------- version history helpers ----------
@@ -2194,7 +2252,7 @@ function renderTextBlockEl(el, text, isError, changedSegments) {
 
   // ---------- single actions ----------
   async function processSingleOCR(index) {
-    if (isProcessing) { showToast('Please wait', 'warning'); return; }
+    if (isProcessing) { showToast(t('please_wait'), 'warning'); return; }
     if (!(await ensureApiKeyOrWarn())) return;
     const imageData = uploadedImages[index];
     if (!imageData) return;
@@ -2213,12 +2271,12 @@ imageData.ocrResult = text;
       updateButtonsAndPlaceholder();
       scheduleSaveConfig();
       syncImageSectionHeightByIndex(index);
-      showToast(`OCR image ${index + 1} done`, 'success');
+      showToast(t('ocr_done', { index: index + 1 }), 'success');
     } catch (err) {
       setTextBlock(`ocr-${index}`, `Error: ${err.message}`, true);
       setItemStatus(index, 'error');
       syncImageSectionHeightByIndex(index);
-      showToast(`OCR error (img ${index + 1})`, 'error');
+      showToast(t('ocr_error', { index: index + 1 }), 'error');
       logError(`OCR error on image ${index + 1} (${imageData.file?.name || ''}): ${err.message}`);
     } finally {
       isProcessing = false;
@@ -2230,10 +2288,10 @@ imageData.ocrResult = text;
   // ban OCR hien tai de Gemini doi chieu ranh gioi bong thoai. Neu anh
   // chua co OCR thi KHONG lam gi ca (dung nhu yeu cau).
  async function processSingleRefineOcr(index) {
-  if (isProcessing) { showToast('Please wait', 'warning'); return; }
+  if (isProcessing) { showToast(t('please_wait'), 'warning'); return; }
   const imageData = uploadedImages[index];
   if (!imageData) return;
-  if (!imageData.ocrResult) { showToast('Run OCR first', 'warning'); return; }
+  if (!imageData.ocrResult) { showToast(t('run_ocr_first'), 'warning'); return; }
   if (!(await ensureApiKeyOrWarn())) return;
   isProcessing = true;
   retryQueueCancelled = false;
@@ -2249,10 +2307,10 @@ imageData.ocrResult = text;
     updateSummary();
     scheduleSaveConfig();
     syncImageSectionHeightByIndex(index);
-    showToast(`Refine OCR image ${index + 1} done`, 'success');
+    showToast(t('refine_ocr_done', { index: index + 1 }), 'success');
   } catch (err) {
     setItemStatus(index, 'error');
-    showToast(`Refine OCR error (img ${index + 1})`, 'error');
+    showToast(t('refine_ocr_error', { index: index + 1 }), 'error');
     logError(`Refine OCR error on image ${index + 1} (${imageData.file?.name || ''}): ${err.message}`);
   } finally {
     isProcessing = false;
@@ -2318,11 +2376,11 @@ navFabPromptInput.addEventListener('keydown', (e) => {
   // het hanh vi cua Refine OCR khi chua co OCR, va KHONG mo hop thoai nhap
   // prompt (dung nhu yeu cau).
   async function onRefineTranslateClick(index) {
-    if (isProcessing) { showToast('Please wait', 'warning'); return; }
+    if (isProcessing) { showToast(t('please_wait'), 'warning'); return; }
     const imageData = uploadedImages[index];
     if (!imageData) return;
     syncEditedTextIfEditing(index);
-    if (!imageData.translationResult) { showToast('Run Translate first', 'warning'); return; }
+    if (!imageData.translationResult) { showToast(t('run_translate_first'), 'warning'); return; }
     if (!(await ensureApiKeyOrWarn())) return;
     const userInstruction = await showRefineTranslatePromptDialog();
     if (userInstruction === null) return; // nguoi dung bam Cancel
@@ -2330,11 +2388,11 @@ navFabPromptInput.addEventListener('keydown', (e) => {
   }
 
 async function processSingleRefineTranslate(index, userInstruction) {
-  if (isProcessing) { showToast('Please wait', 'warning'); return; }
+  if (isProcessing) { showToast(t('please_wait'), 'warning'); return; }
   const imageData = uploadedImages[index];
   if (!imageData) return;
   syncEditedTextIfEditing(index);
-  if (!imageData.translationResult) { showToast('Run Translate first', 'warning'); return; }
+  if (!imageData.translationResult) { showToast(t('run_translate_first'), 'warning'); return; }
   if (!(await ensureApiKeyOrWarn())) return;
   isProcessing = true;
   retryQueueCancelled = false;
@@ -2350,10 +2408,10 @@ async function processSingleRefineTranslate(index, userInstruction) {
     updateSummary();
     scheduleSaveConfig();
     syncImageSectionHeightByIndex(index);
-    showToast(`Refine translation image ${index + 1} done`, 'success');
+    showToast(t('refine_translate_done', { index: index + 1 }), 'success');
   } catch (err) {
     setItemStatus(index, 'error');
-    showToast(`Refine translation error (img ${index + 1})`, 'error');
+    showToast(t('refine_translate_error', { index: index + 1 }), 'error');
     logError(`Refine translation error on image ${index + 1} (${imageData.file?.name || ''}): ${err.message}`);
   } finally {
     isProcessing = false;
@@ -2363,11 +2421,11 @@ async function processSingleRefineTranslate(index, userInstruction) {
 
 
   async function processSingleTranslate(index) {
-    if (isProcessing) { showToast('Please wait', 'warning'); return; }
+    if (isProcessing) { showToast(t('please_wait'), 'warning'); return; }
     if (!(await ensureApiKeyOrWarn())) return;
     const imageData = uploadedImages[index];
     if (!imageData) return;
-    if (!imageData.ocrResult) { showToast('Run OCR first', 'warning'); return; }
+    if (!imageData.ocrResult) { showToast(t('run_ocr_first'), 'warning'); return; }
     isProcessing = true;
     retryQueueCancelled = false;
     setItemStatus(index, 'processing');
@@ -2381,12 +2439,12 @@ imageData.translationResult = text;
       updateSummary();
       scheduleSaveConfig();
       syncImageSectionHeightByIndex(index);
-      showToast(`Translation ${index + 1} done`, 'success');
+      showToast(t('translate_done', { index: index + 1 }), 'success');
     } catch (err) {
       setTextBlock(`translation-${index}`, `Error: ${err.message}`, true);
       setItemStatus(index, 'error');
       syncImageSectionHeightByIndex(index);
-      showToast(`Translate error (img ${index + 1})`, 'error');
+      showToast(t('translate_error', { index: index + 1 }), 'error');
       logError(`Translation error on image ${index + 1} (${imageData.file?.name || ''}): ${err.message}`);
     } finally {
       isProcessing = false;
@@ -2434,7 +2492,7 @@ imageData.translationResult = text;
         imageData.ocrResult = ocrText;
         imageData.translationResult = transText;
       }
-      btn.textContent = 'Edit mode';
+      btn.textContent = t('edit_mode');
       btn.classList.remove('active');
       renderTextBlock(`ocr-${index}`, ocrText, false);
       renderTextBlock(`translation-${index}`, transText, false);
@@ -2442,7 +2500,7 @@ imageData.translationResult = text;
       updateButtonsAndPlaceholder();
       scheduleSaveConfig();
       syncImageSectionHeightByIndex(index);
-      showToast(`Saved (image ${index + 1})`, 'success');
+      showToast(t('saved_image', { index: index + 1 }), 'success');
     } else {
       ocrEl.setAttribute('contenteditable', 'true');
       transEl.setAttribute('contenteditable', 'true');
@@ -2450,22 +2508,22 @@ imageData.translationResult = text;
       ensureEditableLines(`translation-${index}`);
       ocrEl.classList.add('editing');
       transEl.classList.add('editing');
-      btn.textContent = 'Save';
+      btn.textContent = t('save');
       btn.classList.add('active');
       ocrEl.focus();
-      showToast('Edit mode on', 'info');
+      showToast(t('edit_mode_on'), 'info');
     }
   }
 
   // ---------- delete single ----------
   async function deleteSingleImage(index) {
     if (isProcessing) {
-      showToast('Cannot delete now', 'warning');
+      showToast(t('cannot_delete_now'), 'warning');
       return;
     }
     const imageData = uploadedImages[index];
     if (!imageData) return;
-    const confirmed = await showConfirmDialog(`Delete "${imageData.file.name}"?`);
+    const confirmed = await showConfirmDialog(t('delete_confirm', { name: imageData.file.name }));
     if (confirmed) {
       uploadedImages.splice(index, 1);
       selectedUids.delete(imageData.uid);
@@ -2474,7 +2532,7 @@ imageData.translationResult = text;
       updateSummary();
       updateSelectionUI();
       scheduleSaveConfig();
-      showToast('Deleted', 'info');
+      showToast(t('deleted'), 'info');
     }
   }
 
@@ -2506,11 +2564,11 @@ imageData.translationResult = text;
       ? indices.slice().sort((a, b) => a - b)
       : uploadedImages.map((_, i) => i);
     if ((kind === 'translate' || kind === 'refine-ocr') && !targetIndices.some(i => uploadedImages[i]?.ocrResult)) {
-      showToast('Run OCR first', 'error');
+      showToast(t('run_ocr_first'), 'error');
       return;
     }
     if (kind === 'refine-translate' && !targetIndices.some(i => uploadedImages[i]?.translationResult)) {
-      showToast('Run Translate first', 'error');
+      showToast(t('run_translate_first'), 'error');
       return;
     }
     if (!(await ensureApiKeyOrWarn())) return;
@@ -2599,11 +2657,11 @@ else {
     updateButtonsAndPlaceholder(); // tinh lai translateBatchBtn.disabled dua tren hasOcr
     if (stoppedEarly) {
       hideBatchProgressUI();
-      showToast(`Stopped (${done}/${targetIndices.length})`, 'info');
+      showToast(t('stopped', { done, total: targetIndices.length }), 'info');
     } else {
       const skippedReason = kind === 'refine-translate' ? 'no translation yet' : 'no OCR yet';
       const skippedNote = skipped > 0 ? ` (${skipped} skipped, ${skippedReason})` : '';
-      showToast(`${kindLabel} done (${done - skipped})${skippedNote}`, 'success');
+      showToast(t('batch_done', { kind: kindLabel, done: done - skipped }) + skippedNote, 'success');
     }
   }
 
@@ -2671,29 +2729,29 @@ else {
     updateButtonsAndPlaceholder(); // tinh lai translateBatchBtn.disabled dua tren hasOcr
     if (stoppedEarly) {
       hideBatchProgressUI();
-      showToast(`Stopped (${done}/${uploadedImages.length})`, 'info');
+      showToast(t('stopped', { done, total: uploadedImages.length }), 'info');
     } else {
-      showToast(`OCR+Translate done (${done})`, 'success');
+      showToast(t('combined_done', { done }), 'success');
     }
   }
 
   ocrBatchBtn.addEventListener('click', async () => {
-    const langName = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
-    const confirmed = await showConfirmDialog(`OCR source: ${langName}.`, 'Continue', 'Cancel');
+    const langName = langDisplayName(sourceLangSelect.value);
+    const confirmed = await showConfirmDialog(t('ocr_source_confirm', { source: langName }), t('continue_btn'), t('cancel_btn'));
     if (!confirmed) return;
     processBatch('ocr');
   });
   translateBatchBtn.addEventListener('click', async () => {
-    const sourceName = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
-    const targetName = LANG_NAMES[targetLangSelect.value] || targetLangSelect.value;
-    const confirmed = await showConfirmDialog(`Translate ${sourceName} → ${targetName}.`, 'Continue', 'Cancel');
+    const sourceName = langDisplayName(sourceLangSelect.value);
+    const targetName = langDisplayName(targetLangSelect.value);
+    const confirmed = await showConfirmDialog(t('translate_source_target_confirm', { source: sourceName, target: targetName }), t('continue_btn'), t('cancel_btn'));
     if (!confirmed) return;
     processBatch('translate');
   });
   combinedBatchBtn.addEventListener('click', async () => {
-    const sourceName = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
-    const targetName = LANG_NAMES[targetLangSelect.value] || targetLangSelect.value;
-    const confirmed = await showConfirmDialog(`OCR ${sourceName}\nTranslate ${targetName}.`, 'Continue', 'Cancel');
+    const sourceName = langDisplayName(sourceLangSelect.value);
+    const targetName = langDisplayName(targetLangSelect.value);
+    const confirmed = await showConfirmDialog(t('ocr_translate_confirm', { source: sourceName, target: targetName }), t('continue_btn'), t('cancel_btn'));
     if (!confirmed) return;
     processCombinedBatch();
   });
@@ -2701,10 +2759,10 @@ else {
   batchStopBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
     if (!isProcessing || stopRequested) return;
-    const confirmed = await showConfirmDialog('Stop queue? Current image finishes, rest cancelled.');
+    const confirmed = await showConfirmDialog(t('stop_queue_confirm'));
     if (confirmed) {
       stopRequested = true;
-      showToast('Stopping...', 'info');
+      showToast(t('stopping'), 'info');
     }
   });
 
@@ -2758,7 +2816,7 @@ else {
       selectionBar.style.display = 'flex';
       selectionCountEl.textContent = count;
       navFabSelectionHead.style.display = 'flex';
-      navFabSelectionCount.textContent = `${count} selected`;
+      navFabSelectionCount.textContent = t('selection_count', { count });
     } else {
       selectionBar.style.display = 'none';
       navFabSelectionHead.style.display = 'none';
@@ -2774,12 +2832,12 @@ else {
 
 async function clearSelectedImages() {
   if (selectedUids.size === 0) {
-    showToast('No images selected', 'info');
+    showToast(t('no_images_selected'), 'info');
     return;
   }
 
   // Xác nhận xóa trên pill (đã hỗ trợ Enter/Esc)
-  const confirmed = await showConfirmDialog('Clear selected image(s)?', 'Yes', 'No');
+  const confirmed = await showConfirmDialog(t('clear_selected_confirm'), t('yes_btn'), t('no_btn'));
   if (!confirmed) return;
 
   // Lấy danh sách các index cần xóa
@@ -2804,7 +2862,7 @@ async function clearSelectedImages() {
   updateSelectionUI();
   scheduleSaveConfig();
 
-  showToast(`Cleared ${indicesToRemove.length} image(s)`, 'success');
+  showToast(t('cleared_count', { count: indicesToRemove.length }), 'success');
 }
 
 
@@ -2818,8 +2876,8 @@ async function clearSelectedImages() {
   selectionOcrBtn.addEventListener('click', async () => {
     const indices = getSelectedIndices();
     if (indices.length === 0) return;
-    const langName = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
-    const confirmed = await showConfirmDialog(`OCR source language is set to "${langName}".\nRun OCR for ${indices.length} selected image(s)?`, 'Continue', 'Cancel');
+    const langName = langDisplayName(sourceLangSelect.value);
+    const confirmed = await showConfirmDialog(t('ocr_confirm', { source: langName, count: indices.length }), t('continue_btn'), t('cancel_btn'));
     if (!confirmed) return;
     processBatch('ocr', indices);
   });
@@ -2836,10 +2894,10 @@ async function clearSelectedImages() {
     if (indices.length === 0) return;
     const eligible = indices.filter(i => uploadedImages[i]?.ocrResult);
     if (eligible.length === 0) {
-      showToast('Run OCR first', 'error');
+      showToast(t('run_ocr_first'), 'error');
       return;
     }
-    const confirmed = await showConfirmDialog(`Re-scan bubble boundaries to fix split/merged OCR lines\nFor ${eligible.length} selected image(s).`, 'Continue', 'Cancel');
+    const confirmed = await showConfirmDialog(t('refine_ocr_confirm', { count: eligible.length }), t('continue_btn'), t('cancel_btn'));
     if (!confirmed) return;
     processBatch('refine-ocr', indices);
   });
@@ -2850,21 +2908,21 @@ async function clearSelectedImages() {
     indices.forEach(i => syncEditedTextIfEditing(i));
     const eligible = indices.filter(i => uploadedImages[i]?.translationResult);
     if (eligible.length === 0) {
-      showToast('Run Translate first', 'error');
+      showToast(t('run_translate_first'), 'error');
       return;
     }
     const userInstruction = await showRefineTranslatePromptDialog();
     if (userInstruction === null) return; // nguoi dung bam Cancel
-    const confirmed = await showConfirmDialog(`Refine translation\nFor ${eligible.length} selected image(s).`, 'Continue', 'Cancel');
+    const confirmed = await showConfirmDialog(t('refine_translate_confirm', { count: eligible.length }), t('continue_btn'), t('cancel_btn'));
     if (!confirmed) return;
     processBatch('refine-translate', indices, userInstruction);
   });
   selectionTranslateBtn.addEventListener('click', async () => {
     const indices = getSelectedIndices();
     if (indices.length === 0) return;
-    const sourceName = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
-    const targetName = LANG_NAMES[targetLangSelect.value] || targetLangSelect.value;
-    const confirmed = await showConfirmDialog(`Translating from "${sourceName}" to "${targetName}".\nTranslate ${indices.length} selected image(s)?`, 'Continue', 'Cancel');
+    const sourceName = langDisplayName(sourceLangSelect.value);
+    const targetName = langDisplayName(targetLangSelect.value);
+    const confirmed = await showConfirmDialog(t('translate_confirm', { source: sourceName, target: targetName, count: indices.length }), t('continue_btn'), t('cancel_btn'));
     if (!confirmed) return;
     processBatch('translate', indices);
   });
@@ -2881,7 +2939,7 @@ async function clearSelectedImages() {
     if (uploadedImages.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'nav-fab-list-empty';
-      empty.textContent = 'No images yet';
+      empty.textContent = t('no_images');
       listEl.appendChild(empty);
       updateNavFabErrorBadge(0);
       return;
@@ -2906,11 +2964,11 @@ async function clearSelectedImages() {
       dot.className = 'nav-fab-item-dot';
       const label = document.createElement('span');
       label.className = 'nav-fab-item-label';
-      label.textContent = `Image ${i + 1}`;
+      label.textContent = t('nav_image_label', { index: i + 1 });
       const navCb = document.createElement('input');
       navCb.type = 'checkbox';
       navCb.className = 'select-checkbox nav-checkbox';
-      navCb.title = 'Select this image';
+      navCb.title = t('select_this_image');
       navCb.checked = selectedUids.has(imageData.uid);
       navCb.addEventListener('click', (e) => e.stopPropagation());
       navCb.addEventListener('change', (e) => toggleImageSelection(imageData.uid, e.currentTarget.checked));
@@ -2938,7 +2996,7 @@ async function clearSelectedImages() {
       const sDot = document.createElement('span');
       sDot.className = 'nav-fab-item-dot';
       const sLabel = document.createElement('span');
-      sLabel.textContent = 'Summary';
+      sLabel.textContent = t('summary_nav');
       sBtn.appendChild(sDot);
       sBtn.appendChild(sLabel);
       sBtn.addEventListener('click', () => {
@@ -3026,7 +3084,7 @@ document.addEventListener('keydown', (e) => {
 if (ctrl && shift && (e.key === 'c' || e.key === 'C')) {
   e.preventDefault();
   if (uploadedImages.length === 0) {
-    showToast('No images to clear', 'warning');
+    showToast(t('no_images_to_clear'), 'warning');
     return;
   }
   clearAllBtn.click(); // Kích hoạt nút Clear all
@@ -3036,7 +3094,7 @@ if (ctrl && shift && (e.key === 'c' || e.key === 'C')) {
   if (ctrl && shift && (e.key === 'o' || e.key === 'O')) {
     e.preventDefault();
     if (uploadedImages.length === 0) {
-      showToast('No images to OCR', 'warning');
+      showToast(t('no_images_to_ocr'), 'warning');
       return;
     }
     ocrBatchBtn.click();
@@ -3053,12 +3111,12 @@ if (ctrl && shift && (e.key === 'a' || e.key === 'A')) {
   if (ctrl && shift && (e.key === 't' || e.key === 'T')) {
     e.preventDefault();
     if (uploadedImages.length === 0) {
-      showToast('No images to translate', 'warning');
+      showToast(t('no_images_to_translate'), 'warning');
       return;
     }
     const hasOcr = uploadedImages.some(img => img.ocrResult);
     if (!hasOcr) {
-      showToast('Run OCR first', 'error');
+      showToast(t('run_ocr_first'), 'error');
       return;
     }
     translateBatchBtn.click();
@@ -3074,12 +3132,12 @@ if (ctrl && shift && (e.key === 'd' || e.key === 'D')) {
   if (ctrl && shift && (e.key === 'r' || e.key === 'R')) {
     e.preventDefault();
     if (uploadedImages.length === 0) {
-      showToast('No images', 'warning');
+      showToast(t('no_images'), 'warning');
       return;
     }
     const hasTranslation = uploadedImages.some(img => img.translationResult);
     if (!hasTranslation) {
-      showToast('Run Translate first', 'error');
+      showToast(t('run_translate_first'), 'error');
       return;
     }
     // Mở prompt refine translation
@@ -3144,7 +3202,7 @@ if (ctrl && shift && (e.key === 'd' || e.key === 'D')) {
   async function handleNewFiles(fileList) {
     let files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
     if (files.length === 0) {
-      showToast('Images only', 'error');
+      showToast(t('images_only'), 'error');
       return;
     }
 
@@ -3159,18 +3217,18 @@ if (ctrl && shift && (e.key === 'd' || e.key === 'D')) {
       return true;
     });
     if (files.length === 0) {
-      showToast(`Skipped ${duplicateNames.length} duplicate(s)`, 'warning', 4000);
+      showToast(t('skipped_duplicates', { count: duplicateNames.length }), 'warning', 4000);
       return;
     }
 
     if (uploadedImages.length + files.length > MAX_IMAGES) {
-      showToast(`Max ${MAX_IMAGES} images`, 'error');
+      showToast(t('max_images', { max: MAX_IMAGES }), 'error');
       return;
     }
     files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
     placeholder.style.display = 'none';
-    if (files.length > 10) showToast(`Preparing ${files.length}...`, 'info', 3000);
+    if (files.length > 10) showToast(t('preparing', { count: files.length }), 'info', 3000);
 
     const restoredNames = [];
     const temp = await Promise.all(files.map(async (file) => {
@@ -3198,15 +3256,15 @@ return {
     if (restoredNames.length > 0) updateSummary();
     scheduleSaveConfig();
 
-    showToast(`Added ${files.length} images`, 'success');
+    showToast(t('added_images', { count: files.length }), 'success');
     if (duplicateNames.length > 0) {
-      showToast(`Skipped ${duplicateNames.length} duplicate(s)`, 'warning', 4000);
+      showToast(t('skipped_duplicates', { count: duplicateNames.length }), 'warning', 4000);
     }
     if (restoredNames.length > 0) {
-      showToast(`Restored ${restoredNames.length} image(s)`, 'info', 4000);
+      showToast(t('restored_images', { count: restoredNames.length }), 'info', 4000);
     }
     if (pendingRestoreMap.size > 0 && restoredNames.length > 0) {
-      showToast(`${pendingRestoreMap.size} unmatched`, 'warning', 4000);
+      showToast(t('unmatched_cache', { count: pendingRestoreMap.size }), 'warning', 4000);
     }
   }
 
@@ -3245,11 +3303,11 @@ return {
 
   async function clearAll() {
     if (isProcessing) {
-      showToast('Cannot clear now', 'warning');
+      showToast(t('cannot_clear_now'), 'warning');
       return;
     }
     if (uploadedImages.length === 0) return;
-    const confirmed = await showConfirmDialog('Delete ALL images?');
+    const confirmed = await showConfirmDialog(t('delete_all_confirm'));
     if (confirmed) {
       uploadedImages = [];
       selectedUids.clear();
@@ -3264,7 +3322,7 @@ return {
       renderNavFabList();
       updateSelectionUI();
       scheduleSaveConfig();
-      showToast('Cleared all', 'info');
+      showToast(t('cleared_all'), 'info');
     }
   }
   clearAllBtn.addEventListener('click', clearAll);
@@ -3289,18 +3347,18 @@ return {
         editingState[targetId] = false;
         target.removeAttribute('contenteditable');
         target.classList.remove('editing');
-        btn.textContent = 'Edit mode';
+        btn.textContent = t('edit_mode');
         btn.classList.remove('active');
-        showToast('Saved', 'success');
+        showToast(t('save'), 'success');
       } else {
         editingState[targetId] = true;
         target.setAttribute('contenteditable', 'true');
         target.classList.remove('empty');
         target.classList.add('editing');
         target.focus();
-        btn.textContent = 'Save';
+        btn.textContent = t('save');
         btn.classList.add('active');
-        showToast('Edit mode on', 'info');
+        showToast(t('edit_mode_on'), 'info');
       }
     });
   });
@@ -3335,13 +3393,13 @@ return {
       const target = document.getElementById(targetId);
       const content = target ? target.innerText.trim() : '';
 
-      if (!content) { showToast('No content', 'warning'); return; }
+      if (!content) { showToast(t('no_content'), 'warning'); return; }
 
       try {
         const saved = await window.fileExport.save(content, format, suggestedName);
-        if (saved) showToast(`Exported .${format}`, 'success');
+        if (saved) showToast(t('exported', { format }), 'success');
       } catch (err) {
-        showToast('Export failed', 'error');
+        showToast(t('export_failed'), 'error');
         logError(`Export error (${format}, ${suggestedName}): ${err?.message || err}`);
       }
     });
@@ -3409,8 +3467,8 @@ adjustFabPanelDirection();
     const plain = target ? getPlainText(target).trim() : '';
     if (plain) {
       navigator.clipboard.writeText(plain)
-        .then(() => showToast('Copied', 'success'))
-        .catch(err => showToast('Copy failed', 'error'));
+        .then(() => showToast(t('copied'), 'success'))
+        .catch(err => showToast(t('copy_failed'), 'error'));
     }
   });
 
@@ -3447,12 +3505,12 @@ adjustFabPanelDirection();
       </div>
     `;
     document.getElementById('usage-reset-btn').addEventListener('click', async () => {
-      const confirmed = await showConfirmDialog('Reset usage counter?');
+      const confirmed = await showConfirmDialog(t('reset_usage_confirm'));
       if (!confirmed) return;
       usageStats = { totalCalls: 0, successCalls: 0, failedCalls: 0 };
       scheduleSaveConfig();
       infoModal.style.display = 'none';
-      showToast('Usage reset', 'info');
+      showToast(t('usage_reset'), 'info');
     });
   }
 
@@ -3474,12 +3532,12 @@ adjustFabPanelDirection();
       </div>
     `;
     document.getElementById('logs-clear-btn').addEventListener('click', async () => {
-      const confirmed = await showConfirmDialog('Clear error logs?');
+      const confirmed = await showConfirmDialog(t('clear_logs_confirm'));
       if (!confirmed) return;
       errorLogs = [];
       scheduleSaveConfig();
       infoModal.style.display = 'none';
-      showToast('Logs cleared', 'info');
+      showToast(t('logs_cleared'), 'info');
     });
   }
 
@@ -3516,7 +3574,7 @@ adjustFabPanelDirection();
     }
 
     win.onCloseRequested(async (event) => {
-      const confirmed = await showConfirmDialog('Close VisionBox? Unsaved changes may be lost.');
+      const confirmed = await showConfirmDialog(t('close_confirm'));
       if (!confirmed) {
         event.preventDefault();
         return;
@@ -3539,7 +3597,7 @@ function openHistoryModal(index, type) {
   const current = type === 'ocr' ? imageData.ocrResult : imageData.translationResult;
 
   if (!history || history.length === 0) {
-    showToast('No versions saved yet', 'info');
+    showToast(t('no_versions'), 'info');
     return;
   }
 
@@ -3684,7 +3742,7 @@ function applyVersion(index, type, versionIndex) {
   }
   updateSummary();
   scheduleSaveConfig();
-  showToast(`Applied version #${versionIndex + 1}`, 'success');
+  showToast(t('applied_version', { n: versionIndex + 1 }), 'success');
 
   // Đóng modal
   const modal = document.getElementById('history-modal');
@@ -3718,18 +3776,18 @@ document.addEventListener('keydown', (e) => {
       }
     });
 
-    showToast('Saved (Ctrl+S)', 'success');
+    showToast(t('saved_edit'), 'success');
   }
 });
 
 async function onRefineTranslateClickAll() {
-  if (isProcessing) { showToast('Please wait', 'warning'); return; }
+  if (isProcessing) { showToast(t('please_wait'), 'warning'); return; }
   // Lấy tất cả indices có translation
   const indices = uploadedImages
     .map((img, i) => img.translationResult ? i : -1)
     .filter(i => i !== -1);
   if (indices.length === 0) {
-    showToast('No translations to refine', 'warning');
+    showToast(t('no_translations_to_refine'), 'warning');
     return;
   }
   // Đồng bộ edit mode cho các ảnh có translation
