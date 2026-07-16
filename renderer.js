@@ -2584,7 +2584,7 @@ imageData.translationResult = text;
     clearAllBtn.disabled = true;
     showBatchProgressUI();
 
-    const kindLabel = kind === 'ocr' ? 'OCR' : kind === 'refine-ocr' ? 'Refine OCR' : kind === 'refine-translate' ? 'Refine Translation' : 'Translation';
+    const kindLabel = kind === 'ocr' ? t('ocr') : kind === 'refine-ocr' ? t('refine_ocr') : kind === 'refine-translate' ? t('refine_translate') : t('translation');
     const isRefineKind = kind === 'refine-ocr' || kind === 'refine-translate';
     let done = 0;
     let skipped = 0;
