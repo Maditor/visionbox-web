@@ -32,6 +32,7 @@ const STRINGS = {
     font_size_label: 'Font size (OCR & Translation)',
     api_usage: 'API usage',
     view_logs: 'View logs',
+    error_logs_title: 'Error logs',
     about: 'About',
     shortcut_hint: 'Ctrl+H',
 
@@ -65,6 +66,10 @@ const STRINGS = {
     stop_retry: 'Stop retry',
     edit_mode: 'Edit mode',
     save: 'Save',
+    saved: 'Saved',
+    save_failed: 'Save failed',
+    jump_to_error_image: 'Jump to error image',
+    jump_to_error_images: 'Jump to error images ({count})',
     ocr_single: 'OCR',
     translate_single: 'Translate',
     refine: 'Refine',
@@ -158,6 +163,11 @@ const STRINGS = {
     translation_empty: 'Translation is empty, please try again.',
     no_ocr_to_refine: 'No existing OCR result to refine.',
     no_translation_to_refine: 'No existing translation result to refine.',
+    missing_api_key: 'Missing API key',
+    refine_ocr_empty: 'Refine OCR returned empty result.',
+    refine_translate_empty: 'Refine translation returned empty result.',
+    error_prefix: 'Error',
+    could_not_read_file: 'Could not read file',
     // Extra keys (toast / confirm bo sung)
     cache_ready: 'Cache ready ({count})',
     saving: 'Saving...',
@@ -190,6 +200,7 @@ const STRINGS = {
     delete_this_image: 'Delete this image',
     drag_to_resize: 'Drag to resize',
     view_versions_title: 'View versions',
+    versions_title: '{kind} Versions (Image {index})',
     nav_image_label: 'Image {index}',
     images_selected_suffix: 'image(s) selected',
     dropzone_placeholder: 'Drag and drop images here, or click "+ Add images" to start.',
@@ -203,6 +214,31 @@ const STRINGS = {
     lang_manga_ja: 'Manga Japanese',
     lang_manga_en: 'Manga English',
     prompt_placeholder: 'Prompt...',
+
+    // Usage modal
+    usage_total_calls: 'Total calls',
+    usage_success: 'Success',
+    usage_failed: 'Failed',
+    usage_note: 'Counts every actual request sent to the Gemini API, tracked live since this counter was last reset. Saved locally, so it persists across sessions.',
+    reset_counter: 'Reset counter',
+
+    // Logs modal
+    clear_logs_btn: 'Clear logs',
+
+    // About / Shortcuts modal
+    shortcuts_title: 'Keyboard Shortcuts',
+    close_title: 'Close',
+    shortcut_open_file: 'Open file picker',
+    shortcut_ocr_all: 'OCR all',
+    shortcut_translate_all: 'Translate all',
+    shortcut_refine_translate_all: 'Refine Translation all',
+    shortcut_select_all_images: 'Select all images',
+    shortcut_deselect_all: 'Deselect all',
+    shortcut_clear_all_images: 'Clear all images',
+    shortcut_open_replace: 'Open Replace bar',
+    shortcut_save_edit_mode: 'Save edit mode',
+    shortcut_confirm_dialog: 'Confirm dialog',
+    shortcut_cancel_dialog: 'Cancel dialog',
     // ... có thể thêm các key khác nếu cần
   },
   vi: {
@@ -237,6 +273,7 @@ const STRINGS = {
     font_size_label: 'Cỡ chữ (Quét & Dịch)',
     api_usage: 'Lượt Dùng API',
     view_logs: 'Xem Lỗi',
+    error_logs_title: 'Nhật ký lỗi',
     about: 'Giới thiệu',
     shortcut_hint: 'Ctrl+H',
 
@@ -270,6 +307,10 @@ const STRINGS = {
     stop_retry: 'Dừng thử lại',
     edit_mode: 'Sửa',
     save: 'Lưu',
+    saved: 'Đã lưu',
+    save_failed: 'Lưu thất bại',
+    jump_to_error_image: 'Đi đến ảnh bị lỗi',
+    jump_to_error_images: 'Đi đến các ảnh bị lỗi ({count})',
     ocr_single: 'Quét',
     translate_single: 'Dịch',
     refine: 'Tinh chỉnh',
@@ -330,10 +371,10 @@ const STRINGS = {
     no_images_selected: 'Chưa chọn ảnh',
     clear_selected_confirm: 'Xóa ảnh đã chọn?',
     cleared_count: 'Đã xóa {count} ảnh',
-    refine_ocr_confirm: 'Tinh Chỉnh bản Quét cho {count} ảnh đã chọn.',
+    refine_ocr_confirm: 'Quét lại ranh giới bong bóng để sửa lỗi tách/gộp dòng Quét\nCho {count} ảnh đã chọn.',
     refine_translate_confirm: 'Tinh chỉnh bản Dịch\nCho {count} ảnh đã chọn.',
     translate_confirm: 'Dịch từ "{source}" sang "{target}".\nDịch {count} ảnh đã chọn?',
-    ocr_confirm: 'Ngôn ngữ nguồn là "{source}".\nQuét {count} ảnh đã chọn?',
+    ocr_confirm: 'Ngôn ngữ nguồn là "{source}".\nChạy Quét cho {count} ảnh đã chọn?',
     no_content: 'Không có nội dung',
     exported: 'Xuất .{format} thành công',
     export_failed: 'Xuất thất bại',
@@ -363,6 +404,11 @@ const STRINGS = {
     translation_empty: 'Bản dịch trống, vui lòng thử lại.',
     no_ocr_to_refine: 'Chưa có kết quả Quét để tinh chỉnh.',
     no_translation_to_refine: 'Chưa có bản Dịch để tinh chỉnh.',
+    missing_api_key: 'Thiếu API key',
+    refine_ocr_empty: 'Tinh chỉnh Quét trả về kết quả trống.',
+    refine_translate_empty: 'Tinh chỉnh Dịch trả về kết quả trống.',
+    error_prefix: 'Lỗi',
+    could_not_read_file: 'Không thể đọc file',
     // Extra keys (toast / confirm bổ sung)
     cache_ready: 'Bộ nhớ đệm sẵn sàng ({count})',
     saving: 'Đang lưu...',
@@ -395,6 +441,7 @@ const STRINGS = {
     delete_this_image: 'Xóa ảnh này',
     drag_to_resize: 'Kéo để đổi kích thước',
     view_versions_title: 'Xem lịch sử phiên bản',
+    versions_title: 'Phiên bản {kind} (Ảnh {index})',
     nav_image_label: 'Ảnh {index}',
     images_selected_suffix: 'ảnh đã chọn',
     dropzone_placeholder: 'Kéo thả ảnh vào đây, hoặc nhấn "+ Thêm ảnh" để bắt đầu.',
@@ -408,5 +455,30 @@ const STRINGS = {
     lang_manga_ja: 'Manga tiếng Nhật',
     lang_manga_en: 'Manga tiếng Anh',
     prompt_placeholder: 'Nhập yêu cầu...',
+
+    // Usage modal
+    usage_total_calls: 'Tổng lượt gọi',
+    usage_success: 'Thành công',
+    usage_failed: 'Thất bại',
+    usage_note: 'Đếm mỗi yêu cầu thực tế gửi đến Gemini API, được ghi nhận liên tục kể từ lần đặt lại bộ đếm gần nhất. Dữ liệu được lưu cục bộ nên vẫn giữ nguyên qua các lần mở tool.',
+    reset_counter: 'Đặt lại bộ đếm',
+
+    // Logs modal
+    clear_logs_btn: 'Xóa nhật ký',
+
+    // About / Shortcuts modal
+    shortcuts_title: 'Phím tắt',
+    close_title: 'Đóng',
+    shortcut_open_file: 'Mở hộp thoại chọn file',
+    shortcut_ocr_all: 'Quét tất cả',
+    shortcut_translate_all: 'Dịch tất cả',
+    shortcut_refine_translate_all: 'Tinh chỉnh Dịch tất cả',
+    shortcut_select_all_images: 'Chọn tất cả ảnh',
+    shortcut_deselect_all: 'Bỏ chọn tất cả',
+    shortcut_clear_all_images: 'Xóa tất cả ảnh',
+    shortcut_open_replace: 'Mở thanh Tìm/Thay thế',
+    shortcut_save_edit_mode: 'Lưu chế độ chỉnh sửa',
+    shortcut_confirm_dialog: 'Xác nhận hộp thoại',
+    shortcut_cancel_dialog: 'Hủy hộp thoại',
   }
 };

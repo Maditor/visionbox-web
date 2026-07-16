@@ -549,9 +549,9 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     const toastEl = showToast(t('saving'), 'info', 60000);
     try {
       await window.appConfig.set(buildConfigPayload());
-      updateToast(toastEl, 'Saved', 'success', 2500);
+      updateToast(toastEl, t('saved'), 'success', 2500);
     } catch (err) {
-      updateToast(toastEl, 'Save failed', 'error', 4000);
+      updateToast(toastEl, t('save_failed'), 'error', 4000);
     }
   }
 
@@ -996,7 +996,7 @@ getKeyBtn.addEventListener('click', async () => {
   // (doc anh, dung base64...) de khong ton thoi gian xu ly neu chua co key.
   async function ensureApiKeyOrWarn() {
     if (apiKeyInput.value.trim()) return true;
-    await showAlertDialog('Enter Gemini API key first.');
+    await showAlertDialog(t('enter_api_key_first'));
     apiKeyInput.focus();
     return false;
   }
@@ -1584,7 +1584,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
 
   async function runOCR(imageData, itemIndex) {
     const apiKey = getApiKey();
-    if (!apiKey) throw new Error('Missing API key');
+    if (!apiKey) throw new Error(t('missing_api_key'));
     const base64 = imageData.dataUrl.split(',')[1];
     const prompt = buildOcrPrompt(sourceLangSelect.value, skipSfxToggle.checked);
     let text = await callGemini({
@@ -1595,13 +1595,13 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
       .replace(/[ \t]{2,}/g, ' ')
       .trim();
     text = stripEmptyLines(text);
-    if (!text) throw new Error('Could not extract text from image.');
+    if (!text) throw new Error(t('cannot_extract'));
     return text;
   }
 
   async function runTranslate(imageData, itemIndex) {
     const apiKey = getApiKey();
-    if (!apiKey) throw new Error('Missing API key');
+    if (!apiKey) throw new Error(t('missing_api_key'));
     const base64 = imageData.dataUrl.split(',')[1];
     const prompt = buildTranslatePrompt(imageData.ocrResult, sourceLangSelect.value, targetLangSelect.value);
     let text = await callGemini({
@@ -1609,7 +1609,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
     });
     text = text.replace(/^(Translation:|Translated text:|Here is the translation:)/i, '').trim();
     text = stripEmptyLines(text);
-    if (!text) throw new Error('Translation is empty, please try again.');
+    if (!text) throw new Error(t('translation_empty'));
     return text;
   }
 
@@ -1638,8 +1638,8 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   // khong tai su dung/khong lam thay doi runOCR hay runTranslate.
   async function runRefineOcr(imageData, itemIndex) {
     const apiKey = getApiKey();
-    if (!apiKey) throw new Error('Missing API key');
-    if (!imageData.ocrResult) throw new Error('No existing OCR result to refine.');
+    if (!apiKey) throw new Error(t('missing_api_key'));
+    if (!imageData.ocrResult) throw new Error(t('no_ocr_to_refine'));
     const base64 = imageData.dataUrl.split(',')[1];
     const prompt = buildRefineOcrPrompt(sourceLangSelect.value, skipSfxToggle.checked, imageData.ocrResult, currentContentType);
     let text = await callGemini({
@@ -1650,14 +1650,14 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
       .replace(/[ \t]{2,}/g, ' ')
       .trim();
     text = stripEmptyLines(text);
-    if (!text) throw new Error('Refine OCR returned empty result.');
+    if (!text) throw new Error(t('refine_ocr_empty'));
     return text;
   }
 
   async function runRefineTranslate(imageData, itemIndex, userInstruction) {
     const apiKey = getApiKey();
-    if (!apiKey) throw new Error('Missing API key');
-    if (!imageData.translationResult) throw new Error('No existing translation result to refine.');
+    if (!apiKey) throw new Error(t('missing_api_key'));
+    if (!imageData.translationResult) throw new Error(t('no_translation_to_refine'));
     const base64 = imageData.dataUrl.split(',')[1];
     const prompt = buildRefineTranslatePrompt(
       sourceLangSelect.value, targetLangSelect.value, skipSfxToggle.checked,
@@ -1668,7 +1668,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
     });
     text = text.replace(/^(Translation:|Translated text:|Here is the translation:)/i, '').trim();
     text = stripEmptyLines(text);
-    if (!text) throw new Error('Refine translation returned empty result.');
+    if (!text) throw new Error(t('refine_translate_empty'));
     return text;
   }
 
@@ -2276,7 +2276,7 @@ imageData.ocrResult = text;
       syncImageSectionHeightByIndex(index);
       showToast(t('ocr_done', { index: index + 1 }), 'success');
     } catch (err) {
-      setTextBlock(`ocr-${index}`, `Error: ${err.message}`, true);
+      setTextBlock(`ocr-${index}`, `${t('error_prefix')}: ${err.message}`, true);
       setItemStatus(index, 'error');
       syncImageSectionHeightByIndex(index);
       showToast(t('ocr_error', { index: index + 1 }), 'error');
@@ -2444,7 +2444,7 @@ imageData.translationResult = text;
       syncImageSectionHeightByIndex(index);
       showToast(t('translate_done', { index: index + 1 }), 'success');
     } catch (err) {
-      setTextBlock(`translation-${index}`, `Error: ${err.message}`, true);
+      setTextBlock(`translation-${index}`, `${t('error_prefix')}: ${err.message}`, true);
       setItemStatus(index, 'error');
       syncImageSectionHeightByIndex(index);
       showToast(t('translate_error', { index: index + 1 }), 'error');
@@ -2638,7 +2638,7 @@ else {
         updateSummary();
       } catch (err) {
         if (!isRefineKind) {
-          setTextBlock(kind === 'ocr' ? `ocr-${i}` : `translation-${i}`, `Error: ${err.message}`, true);
+          setTextBlock(kind === 'ocr' ? `ocr-${i}` : `translation-${i}`, `${t('error_prefix')}: ${err.message}`, true);
         }
         setItemStatus(i, 'error');
         logError(`${kindLabel} error on image ${i + 1} (${imageData.file?.name || ''}): ${err.message}`);
@@ -2707,9 +2707,9 @@ else {
         updateSummary();
       } catch (err) {
         if (!imageData.ocrResult) {
-          setTextBlock(`ocr-${i}`, `Error: ${err.message}`, true);
+          setTextBlock(`ocr-${i}`, `${t('error_prefix')}: ${err.message}`, true);
         } else {
-          setTextBlock(`translation-${i}`, `Error: ${err.message}`, true);
+          setTextBlock(`translation-${i}`, `${t('error_prefix')}: ${err.message}`, true);
         }
         setItemStatus(i, 'error');
         logError(`OCR+Translate error on image ${i + 1} (${imageData.file?.name || ''}): ${err.message}`);
@@ -3021,8 +3021,8 @@ async function clearSelectedImages() {
     if (errorCount > 0) {
       navFabErrorBadgeEl.textContent = errorCount > 99 ? '99+' : String(errorCount);
       navFabErrorBadgeEl.title = errorCount === 1
-        ? 'Jump to error image'
-        : `Jump to error images (${errorCount})`;
+        ? t('jump_to_error_image')
+        : t('jump_to_error_images', { count: errorCount });
       navFabErrorBadgeEl.classList.add('show');
     } else {
       navFabErrorBadgeEl.classList.remove('show');
@@ -3197,7 +3197,7 @@ if (ctrl && shift && (e.key === 'd' || e.key === 'D')) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+      reader.onerror = () => reject(reader.error || new Error(t('could_not_read_file')));
       reader.readAsDataURL(file);
     });
   }
@@ -3491,20 +3491,20 @@ adjustFabPanelDirection();
       <div class="usage-stats-grid">
         <div class="usage-stat-card">
           <div class="usage-stat-value">${totalCalls}</div>
-          <div class="usage-stat-label">Total calls</div>
+          <div class="usage-stat-label">${t('usage_total_calls')}</div>
         </div>
         <div class="usage-stat-card success">
           <div class="usage-stat-value">${successCalls}</div>
-          <div class="usage-stat-label">Success</div>
+          <div class="usage-stat-label">${t('usage_success')}</div>
         </div>
         <div class="usage-stat-card errors">
           <div class="usage-stat-value">${failedCalls}</div>
-          <div class="usage-stat-label">Failed</div>
+          <div class="usage-stat-label">${t('usage_failed')}</div>
         </div>
       </div>
-      <p class="usage-note">Counts every actual request sent to the Gemini API, tracked live since this counter was last reset. Saved locally, so it persists across sessions.</p>
+      <p class="usage-note">${t('usage_note')}</p>
       <div class="info-modal-actions">
-        <button type="button" id="usage-reset-btn" class="btn btn-danger">Reset counter</button>
+        <button type="button" id="usage-reset-btn" class="btn btn-danger">${t('reset_counter')}</button>
       </div>
     `;
     document.getElementById('usage-reset-btn').addEventListener('click', async () => {
@@ -3519,7 +3519,7 @@ adjustFabPanelDirection();
 
   function renderLogsModal() {
     if (errorLogs.length === 0) {
-      infoModalBody.innerHTML = `<div class="log-list-empty">No errors logged yet.</div>`;
+      infoModalBody.innerHTML = `<div class="log-list-empty">${t('no_errors')}</div>`;
       return;
     }
     const rows = errorLogs.map((entry) => {
@@ -3531,7 +3531,7 @@ adjustFabPanelDirection();
     infoModalBody.innerHTML = `
       <div class="log-list">${rows}</div>
       <div class="info-modal-actions">
-        <button type="button" id="logs-clear-btn" class="btn btn-danger">Clear logs</button>
+        <button type="button" id="logs-clear-btn" class="btn btn-danger">${t('clear_logs_btn')}</button>
       </div>
     `;
     document.getElementById('logs-clear-btn').addEventListener('click', async () => {
@@ -3546,12 +3546,12 @@ adjustFabPanelDirection();
 
   usageBtn.addEventListener('click', () => {
     settingsPanel.classList.remove('open');
-    openInfoModal('API usage');
+    openInfoModal(t('api_usage'));
     renderUsageModal();
   });
   viewLogsBtn.addEventListener('click', () => {
     settingsPanel.classList.remove('open');
-    openInfoModal('Error logs');
+    openInfoModal(t('error_logs_title'));
     renderLogsModal();
   });
 
@@ -3644,7 +3644,7 @@ function openHistoryModal(index, type) {
   }
 
   const title = document.getElementById('history-modal-title');
-  title.textContent = `${type === 'ocr' ? 'OCR' : 'Translation'} Versions (Image ${index + 1})`;
+  title.textContent = t('versions_title', { kind: type === 'ocr' ? t('ocr') : t('translation'), index: index + 1 });
 
   // Cập nhật current version
   const currentContent = document.getElementById('history-current-content');
@@ -3811,24 +3811,24 @@ function renderShortcutsModal() {
     modal.innerHTML = `
       <div class="modal-box shortcuts-modal-box">
         <div class="info-modal-head">
-          <h2>Keyboard Shortcuts</h2>
-          <button type="button" id="shortcuts-modal-close" class="icon-btn" title="Close">
+          <h2>${t('shortcuts_title')}</h2>
+          <button type="button" id="shortcuts-modal-close" class="icon-btn" title="${t('close_title')}">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
           </button>
         </div>
         <div id="shortcuts-modal-body" class="shortcuts-modal-body">
           <div class="shortcuts-grid">
-            <div class="shortcut-item"><kbd>Ctrl+O</kbd><span>Open file picker</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+Shift+O</kbd><span>OCR all</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+Shift+T</kbd><span>Translate all</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+Shift+R</kbd><span>Refine Translation all</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+Shift+A</kbd><span>Select all images</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+Shift+D</kbd><span>Deselect all</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+Shift+C</kbd><span>Clear all images</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+H</kbd><span>Open Replace bar</span></div>
-            <div class="shortcut-item"><kbd>Ctrl+S</kbd><span>Save edit mode</span></div>
-            <div class="shortcut-item"><kbd>Enter</kbd><span>Confirm dialog</span></div>
-            <div class="shortcut-item"><kbd>Esc</kbd><span>Cancel dialog</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+O</kbd><span>${t('shortcut_open_file')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+Shift+O</kbd><span>${t('shortcut_ocr_all')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+Shift+T</kbd><span>${t('shortcut_translate_all')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+Shift+R</kbd><span>${t('shortcut_refine_translate_all')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+Shift+A</kbd><span>${t('shortcut_select_all_images')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+Shift+D</kbd><span>${t('shortcut_deselect_all')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+Shift+C</kbd><span>${t('shortcut_clear_all_images')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+H</kbd><span>${t('shortcut_open_replace')}</span></div>
+            <div class="shortcut-item"><kbd>Ctrl+S</kbd><span>${t('shortcut_save_edit_mode')}</span></div>
+            <div class="shortcut-item"><kbd>Enter</kbd><span>${t('shortcut_confirm_dialog')}</span></div>
+            <div class="shortcut-item"><kbd>Esc</kbd><span>${t('shortcut_cancel_dialog')}</span></div>
           </div>
         </div>
       </div>
@@ -3843,6 +3843,19 @@ function renderShortcutsModal() {
       if (e.target === modal) modal.style.display = 'none';
     });
   }
+
+  // Cập nhật lại text theo ngôn ngữ hiện tại (phòng khi modal đã được tạo từ trước
+  // bằng ngôn ngữ khác)
+  modal.querySelector('.info-modal-head h2').textContent = t('shortcuts_title');
+  document.getElementById('shortcuts-modal-close').title = t('close_title');
+  const spans = modal.querySelectorAll('.shortcut-item span');
+  const shortcutKeys = [
+    'shortcut_open_file', 'shortcut_ocr_all', 'shortcut_translate_all',
+    'shortcut_refine_translate_all', 'shortcut_select_all_images', 'shortcut_deselect_all',
+    'shortcut_clear_all_images', 'shortcut_open_replace', 'shortcut_save_edit_mode',
+    'shortcut_confirm_dialog', 'shortcut_cancel_dialog'
+  ];
+  spans.forEach((span, i) => { if (shortcutKeys[i]) span.textContent = t(shortcutKeys[i]); });
 
   modal.style.display = 'flex';
 }
