@@ -219,7 +219,7 @@ const STRINGS = {
     usage_total_calls: 'Total calls',
     usage_success: 'Success',
     usage_failed: 'Failed',
-    usage_note: 'Counts every actual request sent to the Gemini API, tracked live since this counter was last reset. Saved locally, so it persists across sessions.',
+    usage_note: 'Tracks requests in the current session only — resets when the tool closes (no cross-session saving).',
     reset_counter: 'Reset counter',
 
     // Logs modal
@@ -460,7 +460,7 @@ const STRINGS = {
     usage_total_calls: 'Tổng lượt gọi',
     usage_success: 'Thành công',
     usage_failed: 'Thất bại',
-    usage_note: 'Đếm mỗi yêu cầu thực tế gửi đến Gemini API, được ghi nhận liên tục kể từ lần đặt lại bộ đếm gần nhất. Dữ liệu được lưu cục bộ nên vẫn giữ nguyên qua các lần mở tool.',
+    usage_note: 'Chỉ đếm request trong phiên hiện tại — sẽ reset khi đóng tool (không lưu qua phiên khác).',
     reset_counter: 'Đặt lại bộ đếm',
 
     // Logs modal
