@@ -269,7 +269,7 @@ const STRINGS = {
 
     // Settings panel
     settings: 'Cài đặt',
-    theme_label: 'Giao diện',
+    theme_label: 'Chủ Đề',
     dark_mode: 'Tối',
     light_mode: 'Sáng',
     ui_mode_label: 'Giao diện',
