@@ -720,6 +720,7 @@ main { padding: 24px; }
   gap: 12px;
   flex-wrap: wrap;
 }
+.manga-item-toprow { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
 .manga-item-title { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
 .manga-item-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
 .manga-item-title small { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
@@ -1069,27 +1070,30 @@ main { padding: 24px; }
   position: fixed;
   left: 24px;
   bottom: 22px;
-  z-index: 200;
+  /* LUON o TREN CUNG toan app (cao hon moi z-index khac dang co: selection-bar
+     250, replace-bar 260, modal-overlay/settings-backdrop 1000, settings-panel
+     1001...) de khong co thanh/hop thoai noi nao che duoc pill - ap dung
+     chung cho ca Desktop lan Mobile, khong can toggle class tam thoi nua. */
+  z-index: 1200;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   max-width: calc(100vw - 24px);
 }
-/* Khi pill dang hien confirm/prompt (thay cho hop thoai giua man hinh), cac
-   luong nay co the duoc mo TU BEN TRONG mot modal khac dang mo (vd nut
-   "Reset counter" nam trong info-modal, z-index 1000) - nen luc do nav-fab
-   phai noi len TREN CA modal do thi moi bam duoc, khong thi bi che khuat
-   phia sau. Chi bump z-index luc can, tra lai 200 binh thuong ngay sau. */
-.nav-fab.overlay-active { z-index: 1100; }
+/* Truong hop hiem: pill dang hien confirm/prompt trong luc MOT modal khac
+   cung dang mo (vd nut "Reset counter" trong info-modal) - bump them 1 bac
+   nua cho chac chan, phong khi modal do tu tao stacking context rieng. */
+.nav-fab.overlay-active { z-index: 1300; }
 
 /* Lop chan click "trong suot" phu kin man hinh trong luc confirm/prompt
    dang cho tra loi - thay cho vien mo den + blur cua modal-overlay cu, giu
    dung tinh than "khong con hop thoai to dung nua" nhung van chan duoc cac
-   thao tac khac phia sau cho toi khi nguoi dung bam nut trong pill. */
+   thao tac khac phia sau cho toi khi nguoi dung bam nut trong pill. Nam
+   NGAY DUOI nav-fab (thap hon z-index cua .nav-fab o tren). */
 .nav-fab-scrim {
   position: fixed;
   inset: 0;
-  z-index: 1050;
+  z-index: 1150;
   background: transparent;
   display: none;
 }
@@ -1955,19 +1959,130 @@ body[data-ui-mode="mobile"] .settings-dropdown { flex: 1; position: static; }
 body[data-ui-mode="mobile"] .content-type-btn,
 body[data-ui-mode="mobile"] .settings-btn { width: 100%; justify-content: center; }
 
-/* Dropdown/menu bay len tu duoi nut nhung khong duoc tran ra ngoai man
-   hinh nho -> ghim theo 2 canh trai/phai cua vien lang-bar-row-actions */
-body[data-ui-mode="mobile"] .content-type-menu,
-body[data-ui-mode="mobile"] .settings-panel {
+/* Dropdown menu (Webtoon/Manga) van la kieu bay len tu duoi nut, chi can
+   khong tran ra ngoai man hinh nho */
+body[data-ui-mode="mobile"] .content-type-menu {
   left: 14px;
   right: 14px;
   width: auto;
   min-width: 0;
 }
 
+/* Rieng Settings: hien giua man hinh nhu 1 popup/modal that su cho de nhin,
+   kem lop nen mo den phia sau va nut X o goc tren-phai de dong. Chi ap
+   dung cho che do Mobile - Desktop giu nguyen kieu dropdown cu. */
+body[data-ui-mode="mobile"] .settings-backdrop {
+  display: none;
+}
+body[data-ui-mode="mobile"] .settings-dropdown:has(> #settings-panel.open) .settings-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+}
+body[data-ui-mode="mobile"] .settings-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%) scale(0.96);
+  width: calc(100vw - 48px);
+  max-width: 360px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  min-width: 0;
+  z-index: 1001;
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+body[data-ui-mode="mobile"] .settings-panel.open {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+body[data-ui-mode="mobile"] .settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+body[data-ui-mode="mobile"] .settings-panel-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+body[data-ui-mode="mobile"] .settings-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-alt, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+body[data-ui-mode="mobile"] .settings-close-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+body[data-ui-mode="mobile"] .settings-close-btn svg { width: 16px; height: 16px; }
+
+/* Desktop: header/nut X khong can hien vi Settings van la dropdown nho neo
+   canh nut, giu nguyen hanh vi cu nhu Anh yeu cau */
+body[data-ui-mode="desktop"] .settings-panel-header,
+body[data-ui-mode="desktop"] .settings-backdrop {
+  display: none;
+}
+
 /* --- Vung noi dung chinh: giam padding cho do phi man hinh --- */
 body[data-ui-mode="mobile"] main { padding: 12px; }
-body[data-ui-mode="mobile"] .manga-image-section { max-height: 220px; }
+
+/* --- Header cua tung anh: hang 1 = ten anh + dung luong + trang thai,
+   hang 2 = day du cac nut chuc nang (khong con bi chen giua bang badge) --- */
+body[data-ui-mode="mobile"] .manga-item-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 12px;
+}
+body[data-ui-mode="mobile"] .manga-item-toprow { width: 100%; justify-content: space-between; }
+body[data-ui-mode="mobile"] .manga-item-title span { max-width: 46vw; }
+body[data-ui-mode="mobile"] .manga-item-actions {
+  width: 100%;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+/* --- KHOA bo cuc "anh tren - chu duoi" theo CHE DO (data-ui-mode), khong
+   phai theo be rong cua so hien tai. Vi vay du mo che do Mobile tren mot
+   man hinh may tinh that rong, vung lam viec van la 1 cot doc tu tren
+   xuong, khong bao gio tu mo rong sang kieu anh-trai/chu-phai cua Desktop
+   nua (khac voi truoc day dung @media (max-width) nen bi lo dung dang
+   Desktop khi cua so du rong). --- */
+body[data-ui-mode="mobile"] .manga-item-content { flex-direction: column; }
+body[data-ui-mode="mobile"] .manga-text-section { flex-direction: column; }
+body[data-ui-mode="mobile"] .manga-image-section {
+  width: 100% !important;
+  border-right: none;
+  border-bottom: 1px solid var(--border);
+  /* Gioi han cung chieu cao khung anh de anh (nhat la webtoon strip rat
+     dai) khong choan het man hinh kho luot - anh se tu cuon RIENG ben
+     trong khung nay (xem overflow-y: auto o rule .manga-image-section
+     goc). JS syncImageSectionHeight() cung da duoc chinh de dung mot
+     "tran" thap hon rieng cho mobile, xem MOBILE ceiling trong renderer.js -
+     dat !important o day de chac chan khong bi 1 style cu nao de len. */
+  max-height: 240px !important;
+}
+/* Tay keo doi be rong khung anh khong con y nghia khi anh da luon full-width */
+body[data-ui-mode="mobile"] .image-resize-handle { display: none; }
 
 /* --- Tang vung cham cho nut icon tren mobile --- */
 body[data-ui-mode="mobile"] .icon-btn { min-height: 40px; min-width: 40px; }
@@ -1979,6 +2094,20 @@ body[data-ui-mode="mobile"] .summary { flex-direction: column; padding: 0 12px 1
 
 /* --- Thanh chon nhieu anh, Find & Replace: gon vao trong man hinh --- */
 body[data-ui-mode="mobile"] .selection-bar { max-width: calc(100vw - 20px); }
+/* Vien "dang chon nhieu anh" (selection-bar) o mobile: chuyen LEN TREN
+   thay vi nam duoi cung nhu Desktop, vi phia duoi da co pill nav-fab-toggle
+   (thong bao/xac nhan/nhap) va nut FAB - de ca 2 chong len nhau rat kho
+   bam. Doi luon huong animation cho tu nhien (truot xuong tu tren thay vi
+   truot len tu duoi). */
+body[data-ui-mode="mobile"] .selection-bar {
+  top: 12px;
+  bottom: auto;
+  animation: selectionBarInTopMobile 0.3s var(--ease-spring);
+}
+@keyframes selectionBarInTopMobile {
+  from { opacity: 0; transform: translateX(-50%) translateY(-14px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 body[data-ui-mode="mobile"] .selection-bar-actions { flex-wrap: wrap; justify-content: center; }
 body[data-ui-mode="mobile"] .replace-bar-row-options { justify-content: flex-start; }
 body[data-ui-mode="mobile"] .replace-case-chip { margin-left: 0; }
@@ -1986,10 +2115,62 @@ body[data-ui-mode="mobile"] .replace-case-chip { margin-left: 0; }
 /* --- FAB dieu huong: keo vao gan mep hon --- */
 body[data-ui-mode="mobile"] .nav-fab { left: 12px; bottom: 14px; }
 
-/* --- Giao diien Desktop: neu cua so bi keo nho hon thiet ke, cho scroll
-   ngang thay vi tu reflow/bien dang (hanh vi chuan cua web desktop) --- */
+/* ==========================================================================
+   Pill thong bao/xac nhan/nhap (nav-fab-toggle) o mobile: truoc day JS do
+   theo noi dung va co the dai toi 800px (confirm) / 496px (toast) - qua
+   kho man hinh dien thoai (~410px). Gio gioi han cung theo be rong man
+   hinh, va xu ly rieng tung loai noi dung cho hop ly:
+     - Confirm (Yes/No): la quyet dinh quan trong, ho khong the mat chu ->
+       cho XUONG DONG, pill se cao them theo so dong (JS da doi sang dung
+       chieu cao do duoc thay vi ep cung 48px, xem syncPillState()).
+     - Toast (thong bao ngan, tu bien mat sau vai giay): RUT GON kem dau
+       "..." (co san text-overflow: ellipsis) - khong can doc het cung duoc.
+     - Prompt (o nhap huong dan Refine): chi can gioi han be rong, o nhap
+       da tu cuon rieng ben trong.
+   ========================================================================== */
+body[data-ui-mode="mobile"] .nav-fab-toggle {
+  max-width: calc(100vw - 24px) !important;
+}
+
+body[data-ui-mode="mobile"] .nav-fab-toggle.confirm {
+  height: auto !important;
+  min-height: 48px;
+  padding: 10px !important;
+}
+body[data-ui-mode="mobile"] .nav-fab-confirm {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 8px;
+}
+body[data-ui-mode="mobile"] .nav-fab-confirm-text {
+  white-space: normal;
+  max-width: 100%;
+  line-height: 1.4;
+}
+/* Mac dinh: cau hoi ngan, KHONG xuong dong -> 2 nut van nam CUNG HANG voi
+   chu, can PHAI nhu truoc gio (margin-left:auto co san o rule goc, khong
+   can override gi them o day). */
+
+/* Cau hoi dai phai xuong dong (JS do va gan class .confirm-wrapped trong
+   syncPillState()) -> 2 nut xuong HANG RIENG ben duoi, can TRAI. */
+body[data-ui-mode="mobile"] .nav-fab-toggle.confirm.confirm-wrapped .nav-fab-confirm {
+  align-items: flex-start;
+}
+body[data-ui-mode="mobile"] .nav-fab-toggle.confirm.confirm-wrapped .nav-fab-confirm-actions {
+  width: 100%;
+  justify-content: flex-start;
+  margin-left: 0;
+  margin-top: 2px;
+}
+
+
+/* --- Giao diien Desktop: khi cua so bi keo hep hon thiet ke, JS (xem
+   updateDesktopScale trong renderer.js) se tu dong THU NHO CA GIAO DIEN
+   theo ti le deu (body.style.zoom) thay vi de cac nut/thanh cong cu bi
+   day/xep lai voi nhau. overflow-x: hidden de phong truong hop lam tron
+   so lieu con du 1px thua. --- */
 body[data-ui-mode="desktop"] {
-  min-width: 860px;
+  overflow-x: hidden;
 }
 
 /* ---------- tôn trọng lựa chọn "giảm chuyển động" của người dùng ----------

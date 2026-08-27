@@ -111,7 +111,14 @@
 
       <div class="settings-dropdown">
         <button type="button" id="settings-btn" class="btn btn-secondary settings-btn" title="Settings"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span> <span data-i18n="settings">Settings</span></button>
+        <div id="settings-backdrop" class="settings-backdrop"></div>
         <div id="settings-panel" class="settings-panel">
+          <div class="settings-panel-header">
+            <span class="settings-panel-title" data-i18n="settings">Settings</span>
+            <button type="button" id="settings-close-btn" class="settings-close-btn" title="Close" aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
           <div class="field settings-field">
             <label for="theme-select" data-i18n="theme_label">Theme</label>
             <select id="theme-select">
@@ -123,7 +130,6 @@
           <div class="field settings-field">
             <label for="ui-mode-select" data-i18n="ui_mode_label">Giao diện / UI</label>
             <select id="ui-mode-select">
-              <option value="auto" data-i18n="ui_mode_auto">Tự động (Auto)</option>
               <option value="desktop" data-i18n="ui_mode_desktop">Máy tính (Desktop)</option>
               <option value="mobile" data-i18n="ui_mode_mobile">Điện thoại (Mobile)</option>
             </select>

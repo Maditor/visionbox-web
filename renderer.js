@@ -373,6 +373,11 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
   // giu 1 tran an toan de anh webtoon cuc dai khong keo ca the phinh vo han.
   const IMG_SECTION_BASE_HEIGHT = 420;
   const IMG_SECTION_CEILING = 900;
+  // Mobile: gioi han thap hon han de anh (dac biet webtoon strip rat dai)
+  // khong choan het man hinh, kho luot xuong duoi - anh se tu cuon RIENG
+  // ben trong khung nay thay vi keo dai ca trang.
+  const IMG_SECTION_BASE_HEIGHT_MOBILE = 180;
+  const IMG_SECTION_CEILING_MOBILE = 240;
 
   function syncImageSectionHeight(item) {
     if (!item) return;
@@ -387,9 +392,12 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     // phai chieu cao noi dung THAT SU) - khien vung anh khong bao gio tu
     // co lai duoc sau khi xoa bot chu. Reset ve baseline truoc se loai bo
     // anh huong keo gian nay, cho phep do dung chieu cao noi dung that.
-    imageSection.style.maxHeight = `${IMG_SECTION_BASE_HEIGHT}px`;
+    const isMobileUI = document.body.getAttribute('data-ui-mode') === 'mobile';
+    const baseHeight = isMobileUI ? IMG_SECTION_BASE_HEIGHT_MOBILE : IMG_SECTION_BASE_HEIGHT;
+    const ceiling = isMobileUI ? IMG_SECTION_CEILING_MOBILE : IMG_SECTION_CEILING;
+    imageSection.style.maxHeight = `${baseHeight}px`;
     const textHeight = textSection.scrollHeight;
-    const target = Math.min(IMG_SECTION_CEILING, Math.max(IMG_SECTION_BASE_HEIGHT, textHeight));
+    const target = Math.min(ceiling, Math.max(baseHeight, textHeight));
     imageSection.style.maxHeight = `${target}px`;
   }
 
@@ -494,9 +502,13 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     }
     applyTheme(themeSelect.value === 'dark');
 
-    const savedUIMode = (cfg.uiMode === 'desktop' || cfg.uiMode === 'mobile') ? cfg.uiMode : 'auto';
+    // Khong con lua chon "Tu dong" tren dropdown nua (bo vi trong nhu vo
+    // dung khi nguoi dung da co san may tinh/dien thoai ro rang). Neu chua
+    // co config luu (lan dau mo app), van tu nhan dien 1 lan ngam duoi day
+    // roi luu LUON thanh gia tri CU THE (desktop/mobile) cho nhung lan sau.
+    const savedUIMode = (cfg.uiMode === 'desktop' || cfg.uiMode === 'mobile') ? cfg.uiMode : detectDeviceType();
     uiModeSelect.value = savedUIMode;
-    resolveAndApplyUIMode(savedUIMode);
+    applyUIMode(savedUIMode);
 
     if (typeof cfg.contentFontSize === 'number' && !Number.isNaN(cfg.contentFontSize)) {
       applyFontSize(cfg.contentFontSize);
@@ -639,7 +651,38 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
         );
       }
     }
+    updateDesktopScale();
+    syncAllImageSectionHeights();
   }
+
+  // ---------- Desktop: thu nho ca giao diien theo ti le deu khi cua so
+  // hep hon thiet ke, thay vi de cac nut/thanh cong cu bi day/xep lai.
+  // Dung body.style.zoom (khong dung transform: scale) de position:fixed
+  // (nav-fab, selection-bar, replace-bar...) van tinh toa do dung theo ty
+  // le da thu nho, khong bi lech vi tri.
+  const DESKTOP_DESIGN_WIDTH = 860; // be rong "thoai mai" cua giao diien desktop
+  const DESKTOP_MIN_SCALE = 0.6;    // khong thu nho qua muc nay, se de tran/scroll
+  let desktopScaleRaf = null;
+
+  function updateDesktopScale() {
+    if (document.body.getAttribute('data-ui-mode') !== 'desktop') {
+      document.body.style.zoom = ''; // che do mobile khong can zoom nay
+      return;
+    }
+    const w = window.innerWidth;
+    if (w >= DESKTOP_DESIGN_WIDTH) {
+      document.body.style.zoom = '';
+    } else {
+      const scale = Math.max(w / DESKTOP_DESIGN_WIDTH, DESKTOP_MIN_SCALE);
+      document.body.style.zoom = String(scale);
+    }
+  }
+
+  function scheduleDesktopScaleUpdate() {
+    if (desktopScaleRaf) cancelAnimationFrame(desktopScaleRaf);
+    desktopScaleRaf = requestAnimationFrame(updateDesktopScale);
+  }
+  window.addEventListener('resize', scheduleDesktopScaleUpdate);
 
   // savedMode: 'auto' | 'desktop' | 'mobile' (gia tri luu trong config)
   function resolveAndApplyUIMode(savedMode) {
@@ -753,9 +796,21 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
   // nay - chi can nhet them vao #settings-panel trong index.html.
   const settingsBtn = document.getElementById('settings-btn');
   const settingsPanel = document.getElementById('settings-panel');
+  const settingsCloseBtn = document.getElementById('settings-close-btn');
+  const settingsBackdrop = document.getElementById('settings-backdrop');
   settingsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     settingsPanel.classList.toggle('open');
+  });
+  // Nut X (chi hien o che do mobile, xem CSS) va lop nen mo den phia sau
+  // deu dong panel giong nhau.
+  settingsCloseBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsPanel.classList.remove('open');
+  });
+  settingsBackdrop?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsPanel.classList.remove('open');
   });
   document.addEventListener('click', (e) => {
     if (!settingsPanel.classList.contains('open')) return;
@@ -1126,8 +1181,19 @@ getKeyBtn.addEventListener('click', async () => {
     document.body.appendChild(clone);
     const width = Math.min(maxWidth, Math.max(minWidth, clone.scrollWidth));
     const height = Math.max(minHeight, clone.scrollHeight);
+    // Rieng trang thai 'confirm': kiem tra xem cau hoi co bi xuong dong hay
+    // khong (chu va cum nut Yes/No khong con nam chung 1 hang) - de CSS
+    // quyet dinh can trai/phai cho 2 nut (xem CSS .confirm-wrapped).
+    let wrapped = false;
+    if (stateClass === 'confirm') {
+      const textEl = clone.querySelector('.nav-fab-confirm-text');
+      const actionsEl = clone.querySelector('.nav-fab-confirm-actions');
+      if (textEl && actionsEl) {
+        wrapped = actionsEl.getBoundingClientRect().top - textEl.getBoundingClientRect().top > 4;
+      }
+    }
     document.body.removeChild(clone);
-    return { width, height };
+    return { width, height, wrapped };
   }
 
 function syncPillState() {
@@ -1136,11 +1202,16 @@ function syncPillState() {
   navFabToggleBtn.classList.toggle('prompt', !!activePrompt);
   navFabToggleBtn.classList.toggle('processing', pillIsProcessing);
   navFabToggleBtn.classList.toggle('toast', !!activeToast && !busy);
+  if (!activeConfirm) navFabToggleBtn.classList.remove('confirm-wrapped');
 
 if (activeConfirm) {
   const size = measureInlinePillSize('confirm', 200, 800, 48);
   navFabToggleBtn.style.width = `${size.width}px`;
-  navFabToggleBtn.style.height = '48px';
+  // Dung chieu cao DO DUOC (khong con ep cung 48px) - o che do mobile,
+  // chu se xuong dong (xem CSS body[data-ui-mode="mobile"] .nav-fab-confirm-text)
+  // nen pill can cao them theo so dong de khong bi cat mat chu.
+  navFabToggleBtn.style.height = `${size.height}px`;
+  navFabToggleBtn.classList.toggle('confirm-wrapped', !!size.wrapped);
 } else if (activePrompt) {
       const size = measureInlinePillSize('prompt', 260, 360, 48);
       navFabToggleBtn.style.width = `${size.width}px`;
@@ -1757,21 +1828,23 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
     item.innerHTML = `
       <div class="manga-item-body">
         <div class="manga-item-header">
-          <div class="manga-item-title">
-            <div class="image-size-dropdown">
-              <button type="button" class="image-size-btn" title="${t('adjust_image_size')}"><span class="icon">${ICON_RESIZE}</span></button>
-              <div class="image-size-menu">
-                <span class="image-size-menu-label">${t('image_size')}</span>
-                <input type="range" class="image-size-slider" min="160" max="520" step="10" value="240" title="${t('resize_preview')}">
-                <button type="button" class="image-size-reset" title="${t('reset_original_size')}"><span class="icon">${ICON_REFRESH}</span></button>
+          <div class="manga-item-toprow">
+            <div class="manga-item-title">
+              <div class="image-size-dropdown">
+                <button type="button" class="image-size-btn" title="${t('adjust_image_size')}"><span class="icon">${ICON_RESIZE}</span></button>
+                <div class="image-size-menu">
+                  <span class="image-size-menu-label">${t('image_size')}</span>
+                  <input type="range" class="image-size-slider" min="160" max="520" step="10" value="240" title="${t('resize_preview')}">
+                  <button type="button" class="image-size-reset" title="${t('reset_original_size')}"><span class="icon">${ICON_REFRESH}</span></button>
+                </div>
               </div>
+              <span>${t('image_title', { index: index + 1, name: imageData.file.name })}</span>
+              <small>${t('size_kb', { size: Math.round(imageData.file.size / 1024) })}</small>
             </div>
-            <span>${t('image_title', { index: index + 1, name: imageData.file.name })}</span>
-            <small>${t('size_kb', { size: Math.round(imageData.file.size / 1024) })}</small>
+            <span class="status-badge">${t('status_idle')}</span>
           </div>
           <div class="manga-item-actions">
             <button class="btn btn-danger stop-retry-btn" style="display:none" title="${t('stop_retry_title')}">${t('stop_retry')}</button>
-            <span class="status-badge">${t('status_idle')}</span>
             <button class="btn btn-secondary edit-item-btn">${t('edit_mode')}</button>
             <button class="btn btn-secondary single-ocr-btn">${t('ocr_single')}</button>
             <button class="btn btn-secondary single-translate-btn" ${imageData.ocrResult ? '' : 'disabled'} title="${imageData.ocrResult ? '' : t('run_ocr_first')}">${t('translate_single')}</button>
