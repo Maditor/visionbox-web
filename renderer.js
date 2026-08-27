@@ -166,6 +166,7 @@
   const targetLangSelect = document.getElementById('target-lang-select');
   const skipSfxToggle = document.getElementById('skip-sfx-toggle');
   const themeSelect = document.getElementById('theme-select');
+  const uiModeSelect = document.getElementById('ui-mode-select');
   const contentTypeBtn = document.getElementById('content-type-btn');
   const contentTypeBtnLabel = document.getElementById('content-type-btn-label');
   const contentTypeMenu = document.getElementById('content-type-menu');
@@ -444,6 +445,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
       targetLang: targetLangSelect.value,
       skipSfx: skipSfxToggle.checked,
       theme: themeSelect.value,
+      uiMode: uiModeSelect.value,
       contentFontSize: contentFontSize,
       project: buildProjectPayload(),
       usageStats: usageStats,
@@ -491,6 +493,10 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
       themeSelect.value = cfg.darkMode ? 'dark' : 'light';
     }
     applyTheme(themeSelect.value === 'dark');
+
+    const savedUIMode = (cfg.uiMode === 'desktop' || cfg.uiMode === 'mobile') ? cfg.uiMode : 'auto';
+    uiModeSelect.value = savedUIMode;
+    resolveAndApplyUIMode(savedUIMode);
 
     if (typeof cfg.contentFontSize === 'number' && !Number.isNaN(cfg.contentFontSize)) {
       applyFontSize(cfg.contentFontSize);
@@ -577,6 +583,75 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
 
   toggleKeyBtn.addEventListener('click', () => {
     apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+  });
+
+  // ---------- Giao diện Desktop / Mobile ----------
+  // Nguyen tac (da thong nhat voi nguoi dung):
+  // 1) Viec nhan dien "may nay la dien thoai hay may tinh" CHI chay 1 lan
+  //    luc khoi dong app (hoac khi nguoi dung chu dong doi ve "Auto"),
+  //    KHONG lang nghe su kien resize. Vi vay tren may tinh, du Anh thu nho
+  //    cua so trinh duyet nho lai co nao, giao diien Desktop van giu
+  //    nguyen, khong tu nhay sang Mobile giua chung.
+  // 2) Dua vao kha nang tro chuot (pointer/hover) de phan biet dien thoai
+  //    that voi cua so may tinh bi bop nho - dien thoai that luon la
+  //    "pointer: coarse" + "hover: none", con trinh duyet may tinh du thu
+  //    nho toi dau van la "pointer: fine" + co hover.
+  // 3) Giao diien Mobile duoc thiet ke co dinh o mot kich thuoc tham chieu
+  //    (410px). Thay vi dung @media (max-width) de "ve lai" layout theo
+  //    tung kich thuoc man hinh (de bi xau khi man hinh nho hon nua), ta
+  //    set thang <meta name="viewport" content="width=410"> - trinh duyet
+  //    tren dien thoai se render nhu the man hinh rong 410px roi tu ZOOM
+  //    nguyen khoi cho vua man hinh that, giu dung ty le/bo cuc thiet ke,
+  //    khong reflow lai.
+  // 4) Lua chon thu cong (Desktop/Mobile) trong Settings luon duoc uu tien
+  //    tuyet doi va duoc luu lai qua appConfig; "Auto" tra ve co che nhan
+  //    dien tu dong o buoc (2).
+  const MOBILE_REFERENCE_WIDTH = 410;
+
+  function detectDeviceType() {
+    try {
+      const coarse = window.matchMedia('(pointer: coarse)').matches;
+      const noHover = window.matchMedia('(hover: none)').matches;
+      return (coarse && noHover) ? 'mobile' : 'desktop';
+    } catch (err) {
+      // Trinh duyet cu khong ho tro matchMedia pointer/hover -> mac dinh desktop
+      return 'desktop';
+    }
+  }
+
+  function applyUIMode(resolvedMode) {
+    const mode = resolvedMode === 'mobile' ? 'mobile' : 'desktop';
+    document.body.setAttribute('data-ui-mode', mode);
+
+    const viewportMeta = document.getElementById('viewport-meta');
+    if (viewportMeta) {
+      if (mode === 'mobile') {
+        // Co dinh layout theo kich thuoc tham chieu, khong reflow khi man
+        // hinh nho/lon hon - trinh duyet se tu zoom nguyen khoi cho vua.
+        viewportMeta.setAttribute(
+          'content',
+          `width=${MOBILE_REFERENCE_WIDTH}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover`
+        );
+      } else {
+        viewportMeta.setAttribute(
+          'content',
+          'width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover'
+        );
+      }
+    }
+  }
+
+  // savedMode: 'auto' | 'desktop' | 'mobile' (gia tri luu trong config)
+  function resolveAndApplyUIMode(savedMode) {
+    const resolved = savedMode === 'desktop' || savedMode === 'mobile'
+      ? savedMode
+      : detectDeviceType(); // 'auto' hoac gia tri la khong hop le -> tu nhan dien
+    applyUIMode(resolved);
+  }
+
+  uiModeSelect.addEventListener('change', () => {
+    resolveAndApplyUIMode(uiModeSelect.value);
+    scheduleSaveConfig();
   });
 
   // ---------- dark mode / light mode ----------

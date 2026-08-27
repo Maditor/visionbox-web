@@ -1901,81 +1901,95 @@ mark.refined-word {
 
 /* ==========================================================================
    ---------- MOBILE LAYOUT (phone-friendly) ----------
-   Muc tieu: khong con phan tu nao co min-width co dinh lam tran man hinh
-   nho, moi vung cham (button/icon) toi thieu ~40-44px, cac dropdown mo
-   sat vien man hinh thay vi bay ra ngoai.
+   QUAN TRONG: khong dung @media (max-width) nua. Layout nay chi bat/tat
+   theo attribute [data-ui-mode="mobile"] tren <body> (do renderer.js set,
+   dua tren loai thiet bi hoac lua chon thu cong trong Settings), HOAN
+   TOAN doc lap voi kich thuoc cua so hien tai. Nho vay:
+   - May tinh du bi thu nho cua so toi dau van giu giao diien Desktop
+     (co scroll ngang neu can), khong bao gio tu nhay sang layout nay.
+   - Giao diien Mobile duoc "khoa cung" o mot bo cuc duy nhat (thiet ke
+     tren tham chieu 410px, xem MOBILE_REFERENCE_WIDTH trong renderer.js),
+     roi duoc trinh duyet ZOOM nguyen khoi cho vua man hinh that qua
+     <meta viewport width=410> - KHONG reflow/doi bo cuc theo tung
+     kich thuoc man hinh nho hon nua.
    ========================================================================== */
-@media (max-width: 640px) {
+body[data-ui-mode="mobile"] {
   /* --- Topbar: brand + controls xep doc, input/select rong full --- */
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-    padding: 12px 14px;
-  }
-  .brand-sub { display: none; } /* tagline khong can thiet tren man hinh nho */
-  .topbar-controls { flex-direction: column; gap: 12px; }
-  .field { width: 100%; }
-  select, input[type="text"], input[type="password"] { min-width: 0; width: 100%; }
-  .input-with-btn { width: 100%; }
-  .input-with-btn input { min-width: 0; }
+}
+body[data-ui-mode="mobile"] .topbar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 12px 14px;
+}
+body[data-ui-mode="mobile"] .brand-sub { display: none; } /* tagline khong can thiet tren man hinh nho */
+body[data-ui-mode="mobile"] .topbar-controls { flex-direction: column; gap: 12px; }
+body[data-ui-mode="mobile"] .field { width: 100%; }
+body[data-ui-mode="mobile"] select,
+body[data-ui-mode="mobile"] input[type="text"],
+body[data-ui-mode="mobile"] input[type="password"] { min-width: 0; width: 100%; }
+body[data-ui-mode="mobile"] .input-with-btn { width: 100%; }
+body[data-ui-mode="mobile"] .input-with-btn input { min-width: 0; }
 
-  /* --- Lang bar: xep doc tung hang, nut Upload va cac action rong full --- */
-  .lang-bar { padding: 12px 14px; gap: 14px; }
-  .lang-bar-row { flex-direction: column; align-items: stretch; gap: 10px; }
-  .lang-arrow { display: none; }
-  .upload-btn { margin-left: 0; width: 100%; }
-  .toggle-field { align-self: flex-start; }
+/* --- Lang bar: xep doc tung hang, nut Upload va cac action rong full --- */
+body[data-ui-mode="mobile"] .lang-bar { padding: 12px 14px; gap: 14px; }
+body[data-ui-mode="mobile"] .lang-bar-row { flex-direction: column; align-items: stretch; gap: 10px; }
+body[data-ui-mode="mobile"] .lang-arrow { display: none; }
+body[data-ui-mode="mobile"] .upload-btn { margin-left: 0; width: 100%; }
+body[data-ui-mode="mobile"] .toggle-field { align-self: flex-start; }
 
-  .lang-bar-row-actions { flex-direction: column; align-items: stretch; }
+body[data-ui-mode="mobile"] .lang-bar-row-actions { flex-direction: column; align-items: stretch; }
 
-  /* Batch actions (OCR all / Translate all / ...) xep luoi 2 cot de bam de */
-  .batch-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    width: 100%;
-  }
-  .batch-actions .btn { width: 100%; padding: 11px 10px; }
+/* Batch actions (OCR all / Translate all / ...) xep luoi 2 cot co dinh */
+body[data-ui-mode="mobile"] .batch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+body[data-ui-mode="mobile"] .batch-actions .btn { width: 100%; padding: 11px 10px; }
 
-  .right-actions { width: 100%; justify-content: space-between; gap: 8px; }
-  .content-type-dropdown, .settings-dropdown { flex: 1; position: static; }
-  .content-type-btn, .settings-btn { width: 100%; justify-content: center; }
+body[data-ui-mode="mobile"] .right-actions { width: 100%; justify-content: space-between; gap: 8px; }
+body[data-ui-mode="mobile"] .content-type-dropdown,
+body[data-ui-mode="mobile"] .settings-dropdown { flex: 1; position: static; }
+body[data-ui-mode="mobile"] .content-type-btn,
+body[data-ui-mode="mobile"] .settings-btn { width: 100%; justify-content: center; }
 
-  /* Dropdown/menu bay len tu duoi nut nhung khong duoc tran ra ngoai man
-     hinh nho -> ghim theo 2 canh trai/phai cua vien lang-bar-row-actions */
-  .content-type-menu, .settings-panel {
-    left: 14px;
-    right: 14px;
-    width: auto;
-    min-width: 0;
-  }
-
-  /* --- Vung noi dung chinh: giam padding cho do phi man hinh --- */
-  main { padding: 12px; }
-  .manga-image-section { max-height: 220px; }
-
-  /* --- Tang vung cham cho nut icon tren mobile --- */
-  .icon-btn { min-height: 40px; min-width: 40px; }
-  .nav-fab-jump-btn { min-width: 44px; }
-  .btn { min-height: 40px; }
-
-  /* --- Tong hop All OCR / All translations: xep doc thay vi 2 cot --- */
-  .summary { flex-direction: column; padding: 0 12px 16px; }
-
-  /* --- Thanh chon nhieu anh, Find & Replace: gon vao trong man hinh --- */
-  .selection-bar { max-width: calc(100vw - 20px); }
-  .selection-bar-actions { flex-wrap: wrap; justify-content: center; }
-  .replace-bar-row-options { justify-content: flex-start; }
-  .replace-case-chip { margin-left: 0; }
-
-  /* --- FAB dieu huong: keo vao gan mep hon cho man hinh hep --- */
-  .nav-fab { left: 12px; bottom: 14px; }
+/* Dropdown/menu bay len tu duoi nut nhung khong duoc tran ra ngoai man
+   hinh nho -> ghim theo 2 canh trai/phai cua vien lang-bar-row-actions */
+body[data-ui-mode="mobile"] .content-type-menu,
+body[data-ui-mode="mobile"] .settings-panel {
+  left: 14px;
+  right: 14px;
+  width: auto;
+  min-width: 0;
 }
 
-/* Man hinh rat hep (~360px) - batch actions xep 1 cot cho khoi chat chu */
-@media (max-width: 400px) {
-  .batch-actions { grid-template-columns: 1fr; }
+/* --- Vung noi dung chinh: giam padding cho do phi man hinh --- */
+body[data-ui-mode="mobile"] main { padding: 12px; }
+body[data-ui-mode="mobile"] .manga-image-section { max-height: 220px; }
+
+/* --- Tang vung cham cho nut icon tren mobile --- */
+body[data-ui-mode="mobile"] .icon-btn { min-height: 40px; min-width: 40px; }
+body[data-ui-mode="mobile"] .nav-fab-jump-btn { min-width: 44px; }
+body[data-ui-mode="mobile"] .btn { min-height: 40px; }
+
+/* --- Tong hop All OCR / All translations: xep doc thay vi 2 cot --- */
+body[data-ui-mode="mobile"] .summary { flex-direction: column; padding: 0 12px 16px; }
+
+/* --- Thanh chon nhieu anh, Find & Replace: gon vao trong man hinh --- */
+body[data-ui-mode="mobile"] .selection-bar { max-width: calc(100vw - 20px); }
+body[data-ui-mode="mobile"] .selection-bar-actions { flex-wrap: wrap; justify-content: center; }
+body[data-ui-mode="mobile"] .replace-bar-row-options { justify-content: flex-start; }
+body[data-ui-mode="mobile"] .replace-case-chip { margin-left: 0; }
+
+/* --- FAB dieu huong: keo vao gan mep hon --- */
+body[data-ui-mode="mobile"] .nav-fab { left: 12px; bottom: 14px; }
+
+/* --- Giao diien Desktop: neu cua so bi keo nho hon thiet ke, cho scroll
+   ngang thay vi tu reflow/bien dang (hanh vi chuan cua web desktop) --- */
+body[data-ui-mode="desktop"] {
+  min-width: 860px;
 }
 
 /* ---------- tôn trọng lựa chọn "giảm chuyển động" của người dùng ----------

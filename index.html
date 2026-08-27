@@ -11,7 +11,7 @@
       gtag('config', 'G-PVV4TNKK3M');
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com; img-src 'self' data: https://www.google-analytics.com https://www.google.com;">
     <title>VisionBox</title>
     <link rel="icon" href="icon.png" type="image/png">
@@ -117,6 +117,15 @@
             <select id="theme-select">
               <option value="dark" data-i18n="dark_mode">Dark mode</option>
               <option value="light" data-i18n="light_mode">Light mode</option>
+            </select>
+          </div>
+
+          <div class="field settings-field">
+            <label for="ui-mode-select" data-i18n="ui_mode_label">Giao diện / UI</label>
+            <select id="ui-mode-select">
+              <option value="auto" data-i18n="ui_mode_auto">Tự động (Auto)</option>
+              <option value="desktop" data-i18n="ui_mode_desktop">Máy tính (Desktop)</option>
+              <option value="mobile" data-i18n="ui_mode_mobile">Điện thoại (Mobile)</option>
             </select>
           </div>
 
