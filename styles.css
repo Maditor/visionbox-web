@@ -2060,6 +2060,15 @@ body[data-ui-mode="mobile"] .manga-item-actions {
   flex-wrap: wrap;
   row-gap: 8px;
 }
+/* Checkbox chon anh dang co margin-left:auto (dat qua inline style trong
+   renderer.js) de day no + nut X sat mep phai tren 1 hang dai o Desktop.
+   O mobile dieu nay hay khien trinh duyet ngat dong SOM hon can thiet (nut
+   X bi day xuong hang duoi du hang tren van con cho trong). Bo margin do
+   di de cac nut xep khit tu nhien tu trai qua phai, chi xuong dong khi
+   THAT SU het cho. */
+body[data-ui-mode="mobile"] .manga-item-actions .item-select-checkbox {
+  margin-left: 0 !important;
+}
 
 /* --- KHOA bo cuc "anh tren - chu duoi" theo CHE DO (data-ui-mode), khong
    phai theo be rong cua so hien tai. Vi vay du mo che do Mobile tren mot
@@ -2147,16 +2156,14 @@ body[data-ui-mode="mobile"] .nav-fab-confirm-text {
   max-width: 100%;
   line-height: 1.4;
 }
-/* Mac dinh: cau hoi ngan, KHONG xuong dong -> 2 nut van nam CUNG HANG voi
-   chu, can PHAI nhu truoc gio (margin-left:auto co san o rule goc, khong
-   can override gi them o day). */
-
-/* Cau hoi dai phai xuong dong (JS do va gan class .confirm-wrapped trong
-   syncPillState()) -> 2 nut xuong HANG RIENG ben duoi, can TRAI. */
-body[data-ui-mode="mobile"] .nav-fab-toggle.confirm.confirm-wrapped .nav-fab-confirm {
+/* Viec do chinh xac "co xuong dong hay khong" bang JS de qua kho luong
+   truoc (phu thuoc nhieu quy tac flexbox/min-content kho doan dung 100%
+   tren moi trinh duyet) - don gian hoa: 2 nut Tiep tuc/Huy LUON xuong
+   hang rieng va can TRAI o mobile, khong con phan biet ngan/dai nua. */
+body[data-ui-mode="mobile"] .nav-fab-confirm {
   align-items: flex-start;
 }
-body[data-ui-mode="mobile"] .nav-fab-toggle.confirm.confirm-wrapped .nav-fab-confirm-actions {
+body[data-ui-mode="mobile"] .nav-fab-confirm-actions {
   width: 100%;
   justify-content: flex-start;
   margin-left: 0;

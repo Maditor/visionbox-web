@@ -1181,19 +1181,8 @@ getKeyBtn.addEventListener('click', async () => {
     document.body.appendChild(clone);
     const width = Math.min(maxWidth, Math.max(minWidth, clone.scrollWidth));
     const height = Math.max(minHeight, clone.scrollHeight);
-    // Rieng trang thai 'confirm': kiem tra xem cau hoi co bi xuong dong hay
-    // khong (chu va cum nut Yes/No khong con nam chung 1 hang) - de CSS
-    // quyet dinh can trai/phai cho 2 nut (xem CSS .confirm-wrapped).
-    let wrapped = false;
-    if (stateClass === 'confirm') {
-      const textEl = clone.querySelector('.nav-fab-confirm-text');
-      const actionsEl = clone.querySelector('.nav-fab-confirm-actions');
-      if (textEl && actionsEl) {
-        wrapped = actionsEl.getBoundingClientRect().top - textEl.getBoundingClientRect().top > 4;
-      }
-    }
     document.body.removeChild(clone);
-    return { width, height, wrapped };
+    return { width, height };
   }
 
 function syncPillState() {
@@ -1202,7 +1191,6 @@ function syncPillState() {
   navFabToggleBtn.classList.toggle('prompt', !!activePrompt);
   navFabToggleBtn.classList.toggle('processing', pillIsProcessing);
   navFabToggleBtn.classList.toggle('toast', !!activeToast && !busy);
-  if (!activeConfirm) navFabToggleBtn.classList.remove('confirm-wrapped');
 
 if (activeConfirm) {
   const size = measureInlinePillSize('confirm', 200, 800, 48);
@@ -1211,7 +1199,6 @@ if (activeConfirm) {
   // chu se xuong dong (xem CSS body[data-ui-mode="mobile"] .nav-fab-confirm-text)
   // nen pill can cao them theo so dong de khong bi cat mat chu.
   navFabToggleBtn.style.height = `${size.height}px`;
-  navFabToggleBtn.classList.toggle('confirm-wrapped', !!size.wrapped);
 } else if (activePrompt) {
       const size = measureInlinePillSize('prompt', 260, 360, 48);
       navFabToggleBtn.style.width = `${size.width}px`;
