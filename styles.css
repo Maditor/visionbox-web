@@ -740,6 +740,17 @@ main { padding: 24px; }
 .manga-item.error .status-badge { color: var(--accent); border-color: var(--accent); }
 
 .manga-item-actions { display: flex; align-items: center; gap: 8px; }
+/* Boc tick chon anh + nut X thanh 1 khoi DINH LIEN - de khi flex-wrap can
+   xuong dong, ca 2 luon di CUNG NHAU (hoac cung vua dong tren, hoac cung
+   xuong dong duoi), khong bao gio bi tach roi khien nut X mo coi 1 minh
+   o dong duoi nhu truoc. */
+.manga-item-select-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
 .manga-item-actions .btn { padding: 6px 12px; font-size: 12px; }
 
 .manga-item-actions .edit-item-btn.active {
@@ -2060,14 +2071,12 @@ body[data-ui-mode="mobile"] .manga-item-actions {
   flex-wrap: wrap;
   row-gap: 8px;
 }
-/* Checkbox chon anh dang co margin-left:auto (dat qua inline style trong
-   renderer.js) de day no + nut X sat mep phai tren 1 hang dai o Desktop.
-   O mobile dieu nay hay khien trinh duyet ngat dong SOM hon can thiet (nut
-   X bi day xuong hang duoi du hang tren van con cho trong). Bo margin do
-   di de cac nut xep khit tu nhien tu trai qua phai, chi xuong dong khi
-   THAT SU het cho. */
-body[data-ui-mode="mobile"] .manga-item-actions .item-select-checkbox {
-  margin-left: 0 !important;
+/* Checkbox+X gio da la 1 khoi dinh lien (.manga-item-select-delete). O
+   mobile bo margin-left:auto (dang day ca khoi sat mep phai) de cac nut
+   xep KHIT tu trai qua phai, toi da hoa kha nang vua gon 1 dong; neu van
+   khong du cho thi CA KHOI se cung xuong dong duoi (khong con tach roi). */
+body[data-ui-mode="mobile"] .manga-item-select-delete {
+  margin-left: 0;
 }
 
 /* --- KHOA bo cuc "anh tren - chu duoi" theo CHE DO (data-ui-mode), khong
@@ -2139,6 +2148,17 @@ body[data-ui-mode="mobile"] .nav-fab { left: 12px; bottom: 14px; }
    ========================================================================== */
 body[data-ui-mode="mobile"] .nav-fab-toggle {
   max-width: calc(100vw - 24px) !important;
+}
+/* Confirm/Prompt: THAY VI dua vao JS do uoc luong be rong theo noi dung
+   (de bi lech/hep khong deu khi chu xuong dong + nut xuong hang rieng ben
+   duoi - 2 dieu kien lam phep do "shrink-to-fit" cua trinh duyet tro nen
+   khong dang tin cay), cho LUON CO DINH dung bang be rong chuan man hinh
+   mobile. Vua nhat quan/de nhin, vua khong con phu thuoc vao ket qua do
+   co the sai. Toast (thong bao ngan) van giu do theo noi dung nhu cu vi
+   no chi 1 dong, khong bi cac van de tren. */
+body[data-ui-mode="mobile"] .nav-fab-toggle.confirm,
+body[data-ui-mode="mobile"] .nav-fab-toggle.prompt {
+  width: calc(100vw - 24px) !important;
 }
 
 body[data-ui-mode="mobile"] .nav-fab-toggle.confirm {

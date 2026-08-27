@@ -1842,8 +1842,10 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
                 <button type="button" class="refine-option refine-translate-option" title="${imageData.translationResult ? t('refine_translate_tooltip') : t('run_translate_first')}">${t('refine_translate')}</button>
               </div>
             </div>
-            <input type="checkbox" class="select-checkbox item-select-checkbox" style="margin-left: auto;" title="${t('select_this_image')}" ${selectedUids.has(imageData.uid) ? 'checked' : ''}>
-            <button class="btn btn-danger delete-single-btn" title="${t('delete_this_image')}"><span class="icon">${ICON_X}</span></button>
+            <span class="manga-item-select-delete">
+              <input type="checkbox" class="select-checkbox item-select-checkbox" title="${t('select_this_image')}" ${selectedUids.has(imageData.uid) ? 'checked' : ''}>
+              <button class="btn btn-danger delete-single-btn" title="${t('delete_this_image')}"><span class="icon">${ICON_X}</span></button>
+            </span>
           </div>
         </div>
         <div class="manga-item-content">
