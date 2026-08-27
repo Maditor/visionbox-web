@@ -631,9 +631,49 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     }
   }
 
+  // ---------- Mobile: doi vi tri thanh nut hanh dong + tick chon/nut X ----------
+  // Desktop: giu nguyen cau truc goc (thanh nut Edit/OCR/Translate/Refine +
+  // tick chon + nut X deu nam trong header, canh phan trang thai).
+  // Mobile: 2 thay doi so voi header goc:
+  //   1) Thanh nut Edit/OCR/Translate/Refine (.manga-item-actions, da bo
+  //      rieng tick+X ra) duoc doi khoi header xuong .manga-item-content,
+  //      chen ngay TRUOC .manga-text-section - tuc la nam GIUA khung anh
+  //      va khung OCR/dich cua tung anh.
+  //   2) Tick chon (.manga-item-select-delete, gom checkbox + nut X) duoc
+  //      chuyen vao .manga-item-toprow, dung CHUNG hang voi trang thai
+  //      (status-badge) - CSS (.manga-item-select-delete{margin-left:auto})
+  //      se tu day khoi nay ra sat mep phai, con status-badge nam ngay sau
+  //      ten anh (canh trai) nho .manga-item-toprow doi sang justify-content
+  //      flex-start o mobile (xem styles.css).
+  function applyItemLayoutForUIMode(item, mode) {
+    const header = item.querySelector('.manga-item-header');
+    const toprow = item.querySelector('.manga-item-toprow');
+    const content = item.querySelector('.manga-item-content');
+    const actions = item.querySelector('.manga-item-actions');
+    const textSection = item.querySelector('.manga-text-section');
+    const selectDelete = item.querySelector('.manga-item-select-delete');
+    if (!header || !toprow || !content || !actions || !textSection || !selectDelete) return;
+
+    if (mode === 'mobile') {
+      if (selectDelete.parentElement !== toprow) toprow.appendChild(selectDelete);
+      if (actions.parentElement !== content || actions.nextElementSibling !== textSection) {
+        content.insertBefore(actions, textSection);
+      }
+    } else {
+      // Desktop: tra ve dung vi tri goc (header > actions > select-delete)
+      if (actions.parentElement !== header) header.appendChild(actions);
+      if (selectDelete.parentElement !== actions) actions.appendChild(selectDelete);
+    }
+  }
+
+  function applyLayoutForUIModeToAllItems(mode) {
+    mangaResults.querySelectorAll('.manga-item').forEach((item) => applyItemLayoutForUIMode(item, mode));
+  }
+
   function applyUIMode(resolvedMode) {
     const mode = resolvedMode === 'mobile' ? 'mobile' : 'desktop';
     document.body.setAttribute('data-ui-mode', mode);
+    applyLayoutForUIModeToAllItems(mode);
 
     const viewportMeta = document.getElementById('viewport-meta');
     if (viewportMeta) {
@@ -1923,6 +1963,10 @@ item.querySelectorAll('.history-btn').forEach(btn => {
     renderTextBlockEl(transEl, imageData.translationResult, false);
     attachLineEditing(ocrEl);
     attachLineEditing(transEl);
+
+    // Ap dung ngay bo cuc theo che do hien tai (desktop/mobile) - xem
+    // applyItemLayoutForUIMode() o phan "Giao dien Desktop / Mobile".
+    applyItemLayoutForUIMode(item, document.body.getAttribute('data-ui-mode'));
 
     const slider = item.querySelector('.image-size-slider');
     slider.value = currentPreviewWidth;

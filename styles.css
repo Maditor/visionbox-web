@@ -2064,19 +2064,29 @@ body[data-ui-mode="mobile"] .manga-item-header {
   gap: 8px;
   padding: 10px 12px;
 }
-body[data-ui-mode="mobile"] .manga-item-toprow { width: 100%; justify-content: space-between; }
-body[data-ui-mode="mobile"] .manga-item-title span { max-width: 46vw; }
-body[data-ui-mode="mobile"] .manga-item-actions {
+/* Toprow o mobile gio la 1 hang gom 3 phan: ten anh, trang thai (status-badge)
+   va tick chon + nut X (duoc JS chuyen vao day - xem applyItemLayoutForUIMode
+   trong renderer.js). Doi tu justify-content:space-between (chi hop voi 2
+   phan tu) sang flex-start de ten anh + trang thai nam SAT NHAU ben trai
+   (trang thai "doi qua trai" thay vi bi day sat mep phai nhu truoc); tick
+   chon + X van tu nam SAT MEP PHAI nho .manga-item-select-delete co san
+   margin-left:auto (xem rule goc, khong doi o day). */
+body[data-ui-mode="mobile"] .manga-item-toprow { width: 100%; justify-content: flex-start; }
+/* Thu nho bot max-width cua ten anh de nhuong cho, tranh trang thai + tick/X
+   bi tran/xuong dong khi ten anh qua dai. */
+body[data-ui-mode="mobile"] .manga-item-title span { max-width: 38vw; }
+
+/* Thanh nut Edit mode/OCR/Translate/Refine (.manga-item-actions) o mobile
+   duoc JS doi tu header xuong .manga-item-content, chen ngay TRUOC
+   .manga-text-section - nam GIUA khung hien anh va khung OCR/dich. Them
+   padding + duong ke duoi de tach ro voi khung OCR ben duoi, vi gio no
+   khong con nam trong .manga-item-header (voi padding rieng) nua. */
+body[data-ui-mode="mobile"] .manga-item-content > .manga-item-actions {
   width: 100%;
   flex-wrap: wrap;
   row-gap: 8px;
-}
-/* Checkbox+X gio da la 1 khoi dinh lien (.manga-item-select-delete). O
-   mobile bo margin-left:auto (dang day ca khoi sat mep phai) de cac nut
-   xep KHIT tu trai qua phai, toi da hoa kha nang vua gon 1 dong; neu van
-   khong du cho thi CA KHOI se cung xuong dong duoi (khong con tach roi). */
-body[data-ui-mode="mobile"] .manga-item-select-delete {
-  margin-left: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 /* --- KHOA bo cuc "anh tren - chu duoi" theo CHE DO (data-ui-mode), khong
@@ -2188,6 +2198,39 @@ body[data-ui-mode="mobile"] .nav-fab-confirm-actions {
   justify-content: flex-start;
   margin-left: 0;
   margin-top: 2px;
+}
+
+/* Prompt (o nhap huong dan Refine translation): ap dung dung nguyen tac nhu
+   confirm o tren - 2 nut OK/Cancel LUON xuong hang rieng thay vi nam chung
+   dong voi o nhap (truoc day de JS/CSS tu quyet dinh co xuong dong hay
+   khong tuy be rong con lai, de bi ep sat/kho bam tren man hinh hep). */
+body[data-ui-mode="mobile"] .nav-fab-toggle.prompt {
+  height: auto !important;
+  min-height: 48px;
+  padding: 10px !important;
+}
+body[data-ui-mode="mobile"] .nav-fab-prompt {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+body[data-ui-mode="mobile"] .nav-fab-toggle.prompt .nav-fab-prompt {
+  padding: 0 6px;
+}
+body[data-ui-mode="mobile"] .nav-fab-prompt-input {
+  width: 100%;
+  flex: 1 1 100%;
+}
+body[data-ui-mode="mobile"] .nav-fab-prompt-actions {
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: 2px;
+}
+/* Dong bo thu tu nut voi pill confirm (Tiep tuc/Yes luon dung TRUOC, Huy/No
+   dung SAU) - trong DOM nut Cancel dang dung truoc nut OK (#nav-fab-prompt-cancel
+   roi moi den #nav-fab-prompt-run) nen chi doi cho bang CSS "order" rieng cho
+   mobile, khong dong vao DOM/JS de khong anh huong logic click/focus. */
+body[data-ui-mode="mobile"] .nav-fab-prompt-run {
+  order: -1;
 }
 
 
