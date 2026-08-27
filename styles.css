@@ -2113,9 +2113,13 @@ body[data-ui-mode="mobile"] .manga-image-section {
 body[data-ui-mode="mobile"] .image-resize-handle { display: none; }
 
 /* --- Tang vung cham cho nut icon tren mobile --- */
-body[data-ui-mode="mobile"] .icon-btn { min-height: 40px; min-width: 40px; }
+/* Nang tu 40px len 44px de dat chuan toi thieu ve vung cham (Apple HIG /
+   Material Design deu khuyen nghi >=44px) - chi doi so, khong doi padding/
+   layout nao khac nen khong lam xe cac hang nut dang co (batch-actions,
+   manga-item-actions...), chi cao/rong hon vai px. */
+body[data-ui-mode="mobile"] .icon-btn { min-height: 44px; min-width: 44px; }
 body[data-ui-mode="mobile"] .nav-fab-jump-btn { min-width: 44px; }
-body[data-ui-mode="mobile"] .btn { min-height: 40px; }
+body[data-ui-mode="mobile"] .btn { min-height: 44px; }
 
 /* --- Tong hop All OCR / All translations: xep doc thay vi 2 cot --- */
 body[data-ui-mode="mobile"] .summary { flex-direction: column; padding: 0 12px 16px; }
@@ -2176,22 +2180,21 @@ body[data-ui-mode="mobile"] .nav-fab-toggle.confirm {
   min-height: 48px;
   padding: 10px !important;
 }
+/* Viec do chinh xac "co xuong dong hay khong" bang JS de qua kho luong
+   truoc (phu thuoc nhieu quy tac flexbox/min-content kho doan dung 100%
+   tren moi trinh duyet) - don gian hoa: 2 nut Tiep tuc/Huy LUON xuong
+   hang rieng va can TRAI o mobile, khong con phan biet ngan/dai nua.
+   (Gop 2 rule .nav-fab-confirm truoc day thanh 1 - gia tri align-items
+   cuoi cung giu nguyen la flex-start, dung nhu hanh vi cu.) */
 body[data-ui-mode="mobile"] .nav-fab-confirm {
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   row-gap: 8px;
 }
 body[data-ui-mode="mobile"] .nav-fab-confirm-text {
   white-space: normal;
   max-width: 100%;
   line-height: 1.4;
-}
-/* Viec do chinh xac "co xuong dong hay khong" bang JS de qua kho luong
-   truoc (phu thuoc nhieu quy tac flexbox/min-content kho doan dung 100%
-   tren moi trinh duyet) - don gian hoa: 2 nut Tiep tuc/Huy LUON xuong
-   hang rieng va can TRAI o mobile, khong con phan biet ngan/dai nua. */
-body[data-ui-mode="mobile"] .nav-fab-confirm {
-  align-items: flex-start;
 }
 body[data-ui-mode="mobile"] .nav-fab-confirm-actions {
   width: 100%;
