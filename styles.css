@@ -2293,8 +2293,12 @@ body[data-ui-mode="mobile"] .selection-bar-actions {
   gap: 6px;
 }
 body[data-ui-mode="mobile"] .selection-bar-actions .btn { width: 100%; }
-body[data-ui-mode="mobile"] .refine-dropdown { width: 100%; }
-body[data-ui-mode="mobile"] .refine-btn { width: 100%; }
+/* CHI ap dung cho nut "Refine selected" trong panel chon nhieu anh
+   (#selection-bar-panel) - truoc day thieu scope nen vo tinh lam nut
+   Refine CUA TUNG ANH (canh OCR/Dich duoi moi anh) cung bi keo full-width
+   va xuong dong theo, gay to bat thuong/lech hang so voi cac nut khac. */
+body[data-ui-mode="mobile"] #selection-bar-panel .refine-dropdown { width: 100%; }
+body[data-ui-mode="mobile"] #selection-bar-panel .refine-btn { width: 100%; }
 
 /* Khi menu "Refine OCR selected"/"Refine Translation selected" dang mo
    (nguoi dung vua bam "Refine selected"), lam mo cac phan con lai cua
