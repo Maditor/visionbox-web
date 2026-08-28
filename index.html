@@ -229,27 +229,45 @@
   </div>
 
   <div class="replace-bar-row replace-bar-row-options">
-    <div class="replace-scope-group">
-      <span class="replace-scope-label" data-i18n="search_in">Search in:</span>
-      <label class="replace-scope-chip">
-        <input type="checkbox" id="replace-scope-ocr" checked />
-        <span data-i18n="ocr">OCR</span>
-      </label>
-      <label class="replace-scope-chip">
-        <input type="checkbox" id="replace-scope-translation" checked />
-        <span data-i18n="translation">Translation</span>
-      </label>
+    <div class="replace-dropdown">
+      <button type="button" class="replace-dropdown-btn" id="replace-position-btn">
+        <span data-i18n="position_menu">Position</span>
+        <span class="replace-dropdown-count" id="replace-position-count"></span>
+        <span class="icon replace-dropdown-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      </button>
+      <div class="replace-dropdown-menu" id="replace-position-menu">
+        <label class="replace-dropdown-item">
+          <input type="checkbox" id="replace-scope-ocr" checked />
+          <span data-i18n="ocr">OCR</span>
+        </label>
+        <label class="replace-dropdown-item">
+          <input type="checkbox" id="replace-scope-translation" checked />
+          <span data-i18n="trans_short">Trans</span>
+        </label>
+      </div>
     </div>
 
-    <label class="replace-scope-chip replace-case-chip">
-      <input type="checkbox" id="replace-whole-word" checked />
-      <span data-i18n="whole_word">Whole word</span>
-    </label>
-
-    <label class="replace-scope-chip">
-      <input type="checkbox" id="replace-case-sensitive" />
-      <span data-i18n="match_case">Match case</span>
-    </label>
+    <div class="replace-dropdown">
+      <button type="button" class="replace-dropdown-btn" id="replace-special-btn">
+        <span data-i18n="special_menu">Special</span>
+        <span class="replace-dropdown-count" id="replace-special-count"></span>
+        <span class="icon replace-dropdown-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      </button>
+      <div class="replace-dropdown-menu" id="replace-special-menu">
+        <label class="replace-dropdown-item">
+          <input type="checkbox" id="replace-whole-word" checked />
+          <span data-i18n="whole_word">Whole word</span>
+        </label>
+        <label class="replace-dropdown-item" id="replace-start-with-chip" title="Nhập phần đầu dòng (vd: *sfx) để chọn nguyên cả dòng bắt đầu bằng phần đó">
+          <input type="checkbox" id="replace-start-with" />
+          <span data-i18n="start_with">Start with</span>
+        </label>
+        <label class="replace-dropdown-item" id="replace-case-chip">
+          <input type="checkbox" id="replace-case-sensitive" />
+          <span data-i18n="match_case">Match case</span>
+        </label>
+      </div>
+    </div>
 
     <div class="replace-bar-actions">
       <button type="button" id="replace-one-btn" class="btn btn-secondary" data-i18n="replace_one">Replace</button>

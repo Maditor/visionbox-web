@@ -224,10 +224,23 @@
   const replaceMatchCount = document.getElementById('replace-match-count');
   const replacePrevBtn = document.getElementById('replace-prev-btn');
   const replaceNextBtn = document.getElementById('replace-next-btn');
+  // Scope tim kiem: OCR va Trans (ban dich) - dau cau lien quan ca 2 ben
+  // nen giu lai de nguoi dung gioi han pham vi tim khi can (vd chi tim
+  // trong OCR hoac chi trong ban dich).
   const replaceScopeOcr = document.getElementById('replace-scope-ocr');
   const replaceScopeTranslation = document.getElementById('replace-scope-translation');
   const replaceWholeWord = document.getElementById('replace-whole-word');
+  const replaceStartWith = document.getElementById('replace-start-with');
   const replaceCaseSensitive = document.getElementById('replace-case-sensitive');
+  // Submenu gon: "Position" gom OCR/Trans, "Special" gom Whole word/
+  // Start with/Match case - thay vi bay het 5 chip ra ngoai cho gon thanh
+  // cong cu, tranh 2 nut Replace/Replace all bi day xuong dong.
+  const replacePositionBtn = document.getElementById('replace-position-btn');
+  const replacePositionMenu = document.getElementById('replace-position-menu');
+  const replacePositionCount = document.getElementById('replace-position-count');
+  const replaceSpecialBtn = document.getElementById('replace-special-btn');
+  const replaceSpecialMenu = document.getElementById('replace-special-menu');
+  const replaceSpecialCount = document.getElementById('replace-special-count');
   const replaceOneBtn = document.getElementById('replace-one-btn');
   const replaceAllBtn = document.getElementById('replace-all-btn');
 
@@ -315,7 +328,8 @@ const isInEditableEditBox = e.target && e.target.isContentEditable &&
   (targetId.startsWith('ocr-') || targetId.startsWith('translation-') ||
    targetId === 'summary-ocr-all' || targetId === 'summary-translation-all');
 const isCtrlAAllowedHere = ctrl && !shift && key === 'a' &&
-  (targetId === 'nav-fab-prompt-input' || targetId === 'api-key-input' || isInEditableEditBox);
+  (targetId === 'nav-fab-prompt-input' || targetId === 'api-key-input' ||
+   targetId === 'replace-find-input' || targetId === 'replace-with-input' || isInEditableEditBox);
 
 // Chỉ cho phép nếu là phím tắt của ứng dụng, hoặc các phím thông thường...
 const isAppShortcut = allowedAppShortcuts.some(s => 
@@ -906,16 +920,45 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     return /[\p{L}\p{N}_]/u.test(ch);
   }
 
+  // Go dung chuoi nay vao o Find se kich hoat che do dac biet: tim cac
+  // dong CHI TOAN DAU CAU, khong co chu/so (vd "...", "?!", "!!!", hoac
+  // chi 1 dau nhu "?" / "!" cung duoc tinh). Dung \p{P} (Unicode
+  // Punctuation) nen bao quat duoc hau het dau cau thong dung.
+  const PUNCT_ONLY_TOKEN = '^##';
+  const PUNCT_ONLY_LINE_RE = /^(?=.*\p{P})[\p{P}\s]+$/u;
+  function isPunctuationOnlyLine(line) {
+    return PUNCT_ONLY_LINE_RE.test(line);
+  }
+
   // Tim tat ca vi tri khop trong 1 chuoi (theo tung dong), tra ve
   // {lineIndex, start, end} - dung chung cho ca dem so luong va lay danh
   // sach match de highlight/dieu huong.
-  function findLineMatches(text, needle, caseSensitive, wholeWord) {
+  // startWith: che do "Bat dau bang" - chi can go phan dau dong (vd "*sfx")
+  // la CA DONG do duoc chon nguyen ven (tu dau den cuoi dong) de xoa/thay
+  // the mot lan, khong can quan tam phan con lai cua dong la gi. Luon
+  // khong phan biet hoa/thuong o che do nay (xoa du hoa hay thuong deu
+  // duoc), va bo qua "Whole word" vi da neo san o dau dong.
+  function findLineMatches(text, needle, caseSensitive, wholeWord, startWith) {
     const results = [];
     if (!needle) return results;
     const lines = text.split('\n');
-    const cmpNeedle = caseSensitive ? needle : needle.toLowerCase();
+    if (needle === PUNCT_ONLY_TOKEN) {
+      lines.forEach((line, lineIndex) => {
+        if (isPunctuationOnlyLine(line)) {
+          results.push({ lineIndex, start: 0, end: line.length });
+        }
+      });
+      return results;
+    }
+    const cmpNeedle = (caseSensitive && !startWith) ? needle : needle.toLowerCase();
     lines.forEach((line, lineIndex) => {
-      const hay = caseSensitive ? line : line.toLowerCase();
+      const hay = (caseSensitive && !startWith) ? line : line.toLowerCase();
+      if (startWith) {
+        if (hay.startsWith(cmpNeedle)) {
+          results.push({ lineIndex, start: 0, end: line.length });
+        }
+        return;
+      }
       let from = 0;
       while (true) {
         const pos = hay.indexOf(cmpNeedle, from);
@@ -937,16 +980,17 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     if (!needle) return matches;
     const caseSensitive = replaceCaseSensitive.checked;
     const wholeWord = replaceWholeWord.checked;
+    const startWith = replaceStartWith.checked;
     const searchOcr = replaceScopeOcr.checked;
     const searchTranslation = replaceScopeTranslation.checked;
     uploadedImages.forEach((imgData, imageIndex) => {
       if (searchOcr && imgData.ocrResult) {
-        findLineMatches(imgData.ocrResult, needle, caseSensitive, wholeWord).forEach(m => {
+        findLineMatches(imgData.ocrResult, needle, caseSensitive, wholeWord, startWith).forEach(m => {
           matches.push({ imageIndex, kind: 'ocr', ...m });
         });
       }
       if (searchTranslation && imgData.translationResult) {
-        findLineMatches(imgData.translationResult, needle, caseSensitive, wholeWord).forEach(m => {
+        findLineMatches(imgData.translationResult, needle, caseSensitive, wholeWord, startWith).forEach(m => {
           matches.push({ imageIndex, kind: 'translation', ...m });
         });
       }
@@ -1040,15 +1084,35 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     const needle = replaceFindInput.value;
     if (!needle || replaceMatches.length === 0) return;
     const replacement = replaceWithInput.value;
-    const caseSensitive = replaceCaseSensitive.checked;
     const wholeWord = replaceWholeWord.checked;
+    const startWith = replaceStartWith.checked;
+    // "Start with" luon khong phan biet hoa/thuong (phai xoa duoc du hoa
+    // hay thuong), bat ke Match case dang tick hay khong - checkbox Match
+    // case cung da bi khoa/an tren giao dien khi Start with duoc bat.
+    const caseSensitive = startWith ? false : replaceCaseSensitive.checked;
+    const escaped = escapeRegExp(needle);
+    let pattern;
+    let flags = caseSensitive ? 'gu' : 'giu';
+    if (needle === PUNCT_ONLY_TOKEN) {
+      // Che do dac biet: thay/xoa nguyen dong CHI TOAN DAU CAU (khong chu,
+      // khong so) - dung chung regex voi isPunctuationOnlyLine() de dam
+      // bao logic Replace/Replace all va logic dem/highlight nhat quan.
+      pattern = '^(?=.*\\p{P})[\\p{P}\\s]+$';
+      flags = 'gmu';
+    } else if (startWith) {
+      // Neo vao dau dong (^) va an het phan con lai cua dong (.*) de
+      // thay the/xoa NGUYEN CA DONG bat dau bang needle - vd needle
+      // "*sfx" se khop het "*sfx: vu vu" lan "*Sfx: cach cach".
+      pattern = `^${escaped}.*$`;
+      flags += 'm'; // multiline: ^ va $ khop tung dong thay vi ca chuoi
+    } else {
+      // Whole word: dung lookaround Unicode thay vi \b (\b chi hieu ky tu
+      // ASCII) de ranh gioi tu hoat dong dung voi ca chu cai co dau/CJK.
+      pattern = wholeWord ? `(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])` : escaped;
+    }
+    const regex = new RegExp(pattern, flags);
     const searchOcr = replaceScopeOcr.checked;
     const searchTranslation = replaceScopeTranslation.checked;
-    const escaped = escapeRegExp(needle);
-    // Whole word: dung lookaround Unicode thay vi \b (\b chi hieu ky tu
-    // ASCII) de ranh gioi tu hoat dong dung voi ca chu cai co dau/CJK.
-    const pattern = wholeWord ? `(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])` : escaped;
-    const regex = new RegExp(pattern, caseSensitive ? 'gu' : 'giu');
     let replacedCount = 0;
     const undoChanges = [];
 
@@ -1080,6 +1144,7 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     settingsPanel.classList.remove('open');
     replaceFindInput.focus();
     replaceFindInput.select();
+    updateReplaceDropdownCounts();
     recomputeReplaceMatches(true);
   }
   function closeReplaceBar() {
@@ -1088,8 +1153,51 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     replaceMatches = [];
     replaceActiveIndex = -1;
     replaceUndoStack = [];
+    closeAllReplaceDropdowns();
   }
   function isReplaceBarOpen() { return replaceBar.style.display === 'flex'; }
+
+  // Cap nhat so badge "(x/y)" tren nut Position/Special de nguoi dung
+  // biet minh dang bat may muc trong submenu ma khong can mo ra xem.
+  function updateReplaceDropdownCounts() {
+    const posCount = (replaceScopeOcr.checked ? 1 : 0) + (replaceScopeTranslation.checked ? 1 : 0);
+    replacePositionCount.textContent = `(${posCount}/2)`;
+    const specCount = (replaceWholeWord.checked ? 1 : 0) + (replaceStartWith.checked ? 1 : 0) + (replaceCaseSensitive.checked ? 1 : 0);
+    replaceSpecialCount.textContent = `(${specCount}/3)`;
+  }
+
+  // Dong tat ca submenu Position/Special - dung khi bam ra ngoai, chon
+  // xong 1 submenu roi mo submenu kia, hoac dong ca thanh Replace.
+  function closeAllReplaceDropdowns() {
+    replacePositionMenu.classList.remove('open');
+    replacePositionBtn.classList.remove('open');
+    replaceSpecialMenu.classList.remove('open');
+    replaceSpecialBtn.classList.remove('open');
+  }
+  function toggleReplaceDropdown(btn, menu) {
+    const willOpen = !menu.classList.contains('open');
+    closeAllReplaceDropdowns();
+    if (willOpen) {
+      menu.classList.add('open');
+      btn.classList.add('open');
+    }
+  }
+  replacePositionBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleReplaceDropdown(replacePositionBtn, replacePositionMenu);
+  });
+  replaceSpecialBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleReplaceDropdown(replaceSpecialBtn, replaceSpecialMenu);
+  });
+  // Bam vao ben trong submenu (label/checkbox) KHONG duoc lam dong menu -
+  // chi dong khi bam ra ngoai ca nut lan menu, de tick duoc nhieu muc lien
+  // tiep ma menu khong bi dong sau moi lan tick.
+  document.addEventListener('click', (e) => {
+    const insidePosition = replacePositionBtn.contains(e.target) || replacePositionMenu.contains(e.target);
+    const insideSpecial = replaceSpecialBtn.contains(e.target) || replaceSpecialMenu.contains(e.target);
+    if (!insidePosition && !insideSpecial) closeAllReplaceDropdowns();
+  });
 
   replaceBtn.addEventListener('click', () => { isReplaceBarOpen() ? closeReplaceBar() : openReplaceBar(); });
   replaceCloseBtn.addEventListener('click', closeReplaceBar);
@@ -1107,10 +1215,24 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); doReplaceOneMatch(); }
     else if (e.key === 'Escape') { closeReplaceBar(); }
   });
-  replaceScopeOcr.addEventListener('change', () => recomputeReplaceMatches(true));
-  replaceScopeTranslation.addEventListener('change', () => recomputeReplaceMatches(true));
-  replaceWholeWord.addEventListener('change', () => recomputeReplaceMatches(false));
-  replaceCaseSensitive.addEventListener('change', () => recomputeReplaceMatches(false));
+  replaceScopeOcr.addEventListener('change', () => { updateReplaceDropdownCounts(); recomputeReplaceMatches(true); });
+  replaceScopeTranslation.addEventListener('change', () => { updateReplaceDropdownCounts(); recomputeReplaceMatches(true); });
+  replaceWholeWord.addEventListener('change', () => { updateReplaceDropdownCounts(); recomputeReplaceMatches(false); });
+  replaceCaseSensitive.addEventListener('change', () => { updateReplaceDropdownCounts(); recomputeReplaceMatches(false); });
+  // Khi bat "Start with": khoa va bo tick "Match case" vi phai xoa/thay
+  // the ca dong du hoa hay thuong. Khi tat "Start with": mo khoa lai,
+  // gia tri Match case tro ve mac dinh unchecked (khong nho lai tick cu,
+  // giu don gian va tranh nham lan).
+  replaceStartWith.addEventListener('change', () => {
+    if (replaceStartWith.checked) {
+      replaceCaseSensitive.checked = false;
+      replaceCaseSensitive.disabled = true;
+    } else {
+      replaceCaseSensitive.disabled = false;
+    }
+    updateReplaceDropdownCounts();
+    recomputeReplaceMatches(false);
+  });
   replacePrevBtn.addEventListener('click', () => goToReplaceMatch(-1));
   replaceNextBtn.addEventListener('click', () => goToReplaceMatch(1));
   replaceOneBtn.addEventListener('click', doReplaceOneMatch);

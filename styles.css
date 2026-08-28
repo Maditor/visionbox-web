@@ -535,7 +535,11 @@ select:focus, input:focus { outline: 1px solid var(--accent); border-color: var(
   top: 16px;
   transform: translateX(-50%);
   width: auto;
-  min-width: 420px;
+  /* Sau khi gom OCR/Trans/Whole word/Start with/Match case vao 2 submenu
+     Position + Special, hang options chi con 2 nut dropdown + 2 nut
+     Replace/Replace all nen khong can panel qua rong nua - 480px la du
+     de tat ca nam gon 1 hang, khong bi day xuong dong. */
+  min-width: 480px;
   max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
@@ -590,7 +594,8 @@ select:focus, input:focus { outline: 1px solid var(--accent); border-color: var(
 
 .replace-bar-row-options {
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
   border-top: 1px solid var(--border);
   padding-top: 10px;
 }
@@ -601,39 +606,78 @@ select:focus, input:focus { outline: 1px solid var(--accent); border-color: var(
   display: none !important;
 }
 
-.replace-scope-group { display: flex; align-items: center; gap: 8px; }
-.replace-scope-label {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.replace-scope-chip {
+/* Submenu "Position" (OCR/Trans) va "Special" (Whole word/Start with/
+   Match case) - gom nhieu tick vao 1 nut dropdown cho gon, dua tren
+   cung phong cach voi .refine-dropdown/.refine-menu da co san. */
+.replace-dropdown { position: relative; }
+.replace-dropdown-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
   font-size: 12px;
+  font-family: inherit;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
-.replace-scope-chip input { accent-color: var(--accent); margin: 0; }
-.replace-scope-chip:has(input:checked) {
-  color: var(--accent);
-  border-color: var(--accent-soft);
-  background: var(--accent-soft);
+.replace-dropdown-btn:hover { color: var(--text); border-color: var(--accent-soft); }
+.replace-dropdown-btn.open { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); }
+.replace-dropdown-count {
+  color: inherit;
+  opacity: 0.75;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
 }
-.replace-case-chip { margin-left: auto; }
+.replace-dropdown-caret { display: inline-flex; transition: transform 0.15s ease; }
+.replace-dropdown-caret svg { width: 12px; height: 12px; }
+.replace-dropdown-btn.open .replace-dropdown-caret { transform: rotate(180deg); }
 
-.replace-bar-actions { display: flex; gap: 6px; }
-.replace-bar-actions .btn { padding: 6px 12px; font-size: 12px; white-space: nowrap; }
+.replace-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 170px;
+  width: max-content;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.replace-dropdown-menu.open { display: block; }
+.replace-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.replace-dropdown-item:hover { background: var(--accent-soft); color: var(--accent); }
+.replace-dropdown-item input { accent-color: var(--accent); margin: 0; }
+
+/* Nhom nut Replace/Replace all tach rieng bang duong ke doc + day sang
+   phai bang margin-left:auto, thay vi dinh sat ngay canh nut dropdown. */
+.replace-bar-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+.replace-bar-actions .btn { padding: 6px 14px; font-size: 12px; white-space: nowrap; }
 
 .replace-nav-btn:disabled, .replace-bar-actions .btn:disabled {
   opacity: 0.35;
@@ -656,7 +700,6 @@ mark.replace-highlight-active {
     top: 10px;
   }
   .replace-bar-row-main { flex-wrap: wrap; }
-  .replace-case-chip { margin-left: 0; }
 }
 
 .btn {
@@ -2142,7 +2185,15 @@ body[data-ui-mode="mobile"] .selection-bar {
 }
 body[data-ui-mode="mobile"] .selection-bar-actions { flex-wrap: wrap; justify-content: center; }
 body[data-ui-mode="mobile"] .replace-bar-row-options { justify-content: flex-start; }
-body[data-ui-mode="mobile"] .replace-case-chip { margin-left: 0; }
+/* Duong ke doc ngan cach nut Replace/Replace all chi hop ly khi con nam
+   chung hang voi 2 nut dropdown Position/Special - tren man hinh dien
+   thoai rat hep co the phai xuong dong rieng, luc do bo duong ke di cho
+   khong bi mot gach doc mo coi tro le dau hang. */
+body[data-ui-mode="mobile"] .replace-bar-actions {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
+}
 
 /* --- FAB dieu huong: keo vao gan mep hon --- */
 body[data-ui-mode="mobile"] .nav-fab { left: 12px; bottom: 14px; }
