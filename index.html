@@ -185,19 +185,30 @@
   </div>
 </section>
 
+<!-- Tren mobile, khoi nay thu gon thanh 1 nut vuong (selection-bar-toggle)
+     doi dien voi pill tron nav-fab-toggle o goc con lai - bam vao moi xoe
+     panel chuc nang len phia tren, canh phai. Tren desktop, nut vuong an
+     di va panel hien thi luon nhu 1 pill ngang (khong doi hanh vi cu). -->
 <section id="selection-bar" class="selection-bar" style="display:none">
-  <span class="selection-bar-count"><span id="selection-count">0</span> <span id="selection-count-suffix" data-i18n="images_selected_suffix">image(s) selected</span></span>
-  <div class="selection-bar-actions">
-    <button id="selection-ocr-btn" class="btn btn-secondary" data-i18n="ocr_selected">OCR selected</button>
-    <button id="selection-translate-btn" class="btn btn-secondary" data-i18n="translate_selected">Translate selected</button>
-    <div class="refine-dropdown">
-      <button type="button" id="selection-refine-btn" class="btn btn-secondary refine-btn" title="Refine OCR or Translation for selected images" data-i18n="refine_selected">Refine selected</button>
-      <div class="refine-menu refine-menu-up">
-        <button type="button" id="selection-refine-ocr-btn" class="refine-option" title="Re-scan bubble boundaries to fix split/merged lines" data-i18n="refine_ocr_selected">Refine OCR selected</button>
-        <button type="button" id="selection-refine-translate-btn" class="refine-option" title="Refine translation for selected images" data-i18n="refine_translate_selected">Refine Translation selected</button>
+  <button type="button" id="selection-bar-toggle" class="selection-bar-toggle" title="Selection actions">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+    <span id="selection-bar-toggle-count" class="selection-bar-toggle-count">0</span>
+  </button>
+
+  <div id="selection-bar-panel" class="selection-bar-panel">
+    <span class="selection-bar-count"><span id="selection-count">0</span> <span id="selection-count-suffix" data-i18n="images_selected_suffix">image(s) selected</span></span>
+    <div class="selection-bar-actions">
+      <button id="selection-ocr-btn" class="btn btn-secondary" data-i18n="ocr_selected">OCR selected</button>
+      <button id="selection-translate-btn" class="btn btn-secondary" data-i18n="translate_selected">Translate selected</button>
+      <div class="refine-dropdown">
+        <button type="button" id="selection-refine-btn" class="btn btn-secondary refine-btn" title="Refine OCR or Translation for selected images" data-i18n="refine_selected">Refine selected</button>
+        <div class="refine-menu refine-menu-up">
+          <button type="button" id="selection-refine-ocr-btn" class="refine-option" title="Re-scan bubble boundaries to fix split/merged lines" data-i18n="refine_ocr_selected">Refine OCR selected</button>
+          <button type="button" id="selection-refine-translate-btn" class="refine-option" title="Refine translation for selected images" data-i18n="refine_translate_selected">Refine Translation selected</button>
+        </div>
       </div>
+      <button id="selection-cancel-btn" class="btn btn-danger" data-i18n="deselect">Deselect</button>
     </div>
-    <button id="selection-cancel-btn" class="btn btn-danger" data-i18n="deselect">Deselect</button>
   </div>
 </section>
 
@@ -212,26 +223,32 @@
     <span class="replace-bar-arrow">&rarr;</span>
     <input type="text" id="replace-with-input" class="replace-input" placeholder="Replace with..." data-i18n="replace_with_placeholder" data-i18n-placeholder />
 
-    <span id="replace-match-count" class="replace-match-count">0/0</span>
+    <!-- Nhom nay (so luong match + nut len/xuong + nut X) tren mobile se
+         luon xuong dong rieng (xem CSS replace-bar-row-secondary), tach
+         khoi hang input Find/Replace phia tren de tranh bam nham. -->
+    <div class="replace-bar-row-secondary" id="replace-bar-row-secondary">
+      <span id="replace-match-count" class="replace-match-count">0/0</span>
 
-    <div class="replace-nav-btns">
-      <button type="button" id="replace-prev-btn" class="icon-btn replace-nav-btn" title="Previous match">
-        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
-      </button>
-      <button type="button" id="replace-next-btn" class="icon-btn replace-nav-btn" title="Next match">
-        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <div class="replace-nav-btns">
+        <button type="button" id="replace-prev-btn" class="icon-btn replace-nav-btn" title="Previous match">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
+        </button>
+        <button type="button" id="replace-next-btn" class="icon-btn replace-nav-btn" title="Next match">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+      </div>
+
+      <button type="button" id="replace-close-btn" class="icon-btn replace-close-btn" title="Close">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
       </button>
     </div>
-
-    <button type="button" id="replace-close-btn" class="icon-btn replace-close-btn" title="Close">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
-    </button>
   </div>
 
-  <div class="replace-bar-row replace-bar-row-options">
+  <div class="replace-bar-row replace-bar-row-options" id="replace-bar-row-options">
     <div class="replace-dropdown">
       <button type="button" class="replace-dropdown-btn" id="replace-position-btn">
-        <span data-i18n="position_menu">Position</span>
+        <span class="icon replace-dropdown-icon" title="Position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+        <span class="replace-dropdown-label" data-i18n="position_menu">Position</span>
         <span class="replace-dropdown-count" id="replace-position-count"></span>
         <span class="icon replace-dropdown-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
       </button>
@@ -249,7 +266,8 @@
 
     <div class="replace-dropdown">
       <button type="button" class="replace-dropdown-btn" id="replace-special-btn">
-        <span data-i18n="special_menu">Special</span>
+        <span class="icon replace-dropdown-icon" title="Special"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+        <span class="replace-dropdown-label" data-i18n="special_menu">Special</span>
         <span class="replace-dropdown-count" id="replace-special-count"></span>
         <span class="icon replace-dropdown-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
       </button>

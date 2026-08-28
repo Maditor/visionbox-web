@@ -192,6 +192,12 @@
   // ---------- selection (chon anh cu the) ----------
   const selectionBar = document.getElementById('selection-bar');
   const selectionCountEl = document.getElementById('selection-count');
+  // Nut vuong thu gon + panel xoe len (chi active tren mobile qua CSS,
+  // nhung wiring JS dung chung, tren desktop chi don gian khong co gi
+  // de bam vao nut toggle vi no bi an).
+  const selectionBarToggle = document.getElementById('selection-bar-toggle');
+  const selectionBarPanel = document.getElementById('selection-bar-panel');
+  const selectionBarToggleCount = document.getElementById('selection-bar-toggle-count');
   const selectionOcrBtn = document.getElementById('selection-ocr-btn');
   const selectionRefineBtn = document.getElementById('selection-refine-btn');
   const selectionRefineMenu = selectionRefineBtn?.closest('.refine-dropdown')?.querySelector('.refine-menu');
@@ -241,6 +247,9 @@
   const replaceSpecialBtn = document.getElementById('replace-special-btn');
   const replaceSpecialMenu = document.getElementById('replace-special-menu');
   const replaceSpecialCount = document.getElementById('replace-special-count');
+  const replaceBarRowSecondary = document.getElementById('replace-bar-row-secondary');
+  const replaceBarRowOptions = document.getElementById('replace-bar-row-options');
+  const replaceNavBtnsGroup = replaceBarRowSecondary?.querySelector('.replace-nav-btns');
   const replaceOneBtn = document.getElementById('replace-one-btn');
   const replaceAllBtn = document.getElementById('replace-all-btn');
 
@@ -684,10 +693,47 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     mangaResults.querySelectorAll('.manga-item').forEach((item) => applyItemLayoutForUIMode(item, mode));
   }
 
+  // Position/Special (submenu OCR/Trans va Whole word/Start with/Match
+  // case): tren MOBILE duoc chuyen hang len chung voi nut X (dong bo
+  // yeu cau "cung hang voi nut close panel replace"), tren DESKTOP tra
+  // ve dung vi tri goc (hang rieng phia duoi, canh nut Replace/Replace
+  // all) - dung DOM that su (khong phai chi CSS order) vi 2 nut nay von
+  // la con cua .replace-bar-row-options, khac container voi row-secondary
+  // chua nut X. insertBefore tu dong "di chuyen" node dang o bat ky dau
+  // sang vi tri moi nen goi lai nhieu lan khong sao, khong can kiem tra
+  // dieu kien truoc.
+  function applyReplaceBarLayoutForUIMode(mode) {
+    if (!replaceBarRowSecondary || !replaceBarRowOptions || !replaceNavBtnsGroup) return;
+    const positionWrap = replacePositionBtn?.closest('.replace-dropdown');
+    const specialWrap = replaceSpecialBtn?.closest('.replace-dropdown');
+    if (!positionWrap || !specialWrap) return;
+
+    if (mode === 'mobile') {
+      // Thu tu hien thi (yeu cau: nut len/xuong ra ngoai cung trai de de
+      // bam hon, so dem vao ke tiep, Position/Special nam giua so dem va
+      // nut X): [len/xuong] [so luong match] [Position] [Special] [X].
+      // insertBefore(x, replaceCloseBtn) lien tiep theo dung thu tu mong
+      // muon se tu dong xep dung vi tri, bat ke DOM dang o trang thai nao
+      // truoc do (desktop hay mobile).
+      [replaceNavBtnsGroup, replaceMatchCount, positionWrap, specialWrap].forEach((el) => {
+        replaceBarRowSecondary.insertBefore(el, replaceCloseBtn);
+      });
+    } else {
+      // Desktop: tra so luong match ve lai truoc nut len/xuong (thu tu
+      // goc trong HTML), Position/Special tra ve hang rieng canh nut
+      // Replace/Replace all - khong doi giao dien Desktop.
+      replaceBarRowSecondary.insertBefore(replaceMatchCount, replaceNavBtnsGroup);
+      const actions = replaceBarRowOptions.querySelector('.replace-bar-actions');
+      replaceBarRowOptions.insertBefore(positionWrap, actions || null);
+      replaceBarRowOptions.insertBefore(specialWrap, actions || null);
+    }
+  }
+
   function applyUIMode(resolvedMode) {
     const mode = resolvedMode === 'mobile' ? 'mobile' : 'desktop';
     document.body.setAttribute('data-ui-mode', mode);
     applyLayoutForUIModeToAllItems(mode);
+    applyReplaceBarLayoutForUIMode(mode);
 
     const viewportMeta = document.getElementById('viewport-meta');
     if (viewportMeta) {
@@ -879,7 +925,10 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
   // khop voi cach renderTextBlockEl() tach dong thanh cac .line-row.
   let replaceMatches = [];
   let replaceActiveIndex = -1;
-  let replaceHighlightEl = null;
+  // Danh sach cac phan tu .line-text dang co mark highlight (ca active
+  // lan cac match con lai) - can nho lai de LAN SAU xoa dung, tranh sot
+  // highlight cu khi doi tu khoa/pham vi tim kiem.
+  let replaceHighlightedEls = [];
   // Ngan xep undo: moi phan tu la 1 lan bam Replace/Replace all, chua
   // danh sach { imageIndex, kind, previousText } de khoi phuc lai dung
   // gia tri TRUOC khi thay the. Ctrl+Z (khi thanh Replace dang mo) se pop
@@ -998,34 +1047,66 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     return matches;
   }
 
-  function clearReplaceHighlight() {
-    if (replaceHighlightEl) {
-      replaceHighlightEl.textContent = replaceHighlightEl.textContent;
-      replaceHighlightEl = null;
-    }
+  // Xoa TAT CA highlight (ca active lan light) dang hien tren cac dong -
+  // gan lai chinh text hien co vao textContent la cach "danh lua" trinh
+  // duyet de no tu dong bo cac the <mark> con, tro ve text thuong.
+  function clearReplaceHighlights() {
+    replaceHighlightedEls.forEach((el) => {
+      el.textContent = el.textContent;
+    });
+    replaceHighlightedEls = [];
   }
 
-  function highlightReplaceMatch(match) {
-    clearReplaceHighlight();
-    if (!match) return;
-    const el = document.getElementById(`${match.kind}-${match.imageIndex}`);
-    if (!el) return;
-    const row = el.children[match.lineIndex];
-    const lineText = row?.querySelector('.line-text');
-    if (!lineText) return;
-    const text = lineText.textContent;
-    const before = text.slice(0, match.start);
-    const matched = text.slice(match.start, match.end);
-    const after = text.slice(match.end);
-    lineText.innerHTML = '';
-    if (before) lineText.appendChild(document.createTextNode(before));
-    const mark = document.createElement('mark');
-    mark.className = 'replace-highlight-active';
-    mark.textContent = matched;
-    lineText.appendChild(mark);
-    if (after) lineText.appendChild(document.createTextNode(after));
-    replaceHighlightEl = lineText;
-    mark.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  // Ve highlight cho TAT CA match hien co: match dang active (dieu huong
+  // bang nut len/xuong) duoc highlight DAM nhu cu, cac match con lai duoc
+  // highlight NHE hon de nguoi dung nhin duoc tong quan con bao nhieu cho
+  // da tim thay tren toan bo cac anh, khong chi 1 cho dang chon.
+  function renderReplaceHighlights() {
+    clearReplaceHighlights();
+    if (replaceMatches.length === 0) return;
+
+    // Gom theo tung dong (1 dong co the co NHIEU match) de ve 1 lan tren
+    // cung 1 phan tu .line-text, tranh ghi de lam mat highlight truoc do.
+    const byLine = new Map();
+    replaceMatches.forEach((m, idx) => {
+      const key = `${m.kind}-${m.imageIndex}-${m.lineIndex}`;
+      if (!byLine.has(key)) byLine.set(key, []);
+      byLine.get(key).push({ ...m, idx });
+    });
+
+    let activeMarkEl = null;
+    byLine.forEach((lineMatches) => {
+      const first = lineMatches[0];
+      const el = document.getElementById(`${first.kind}-${first.imageIndex}`);
+      if (!el) return;
+      const row = el.children[first.lineIndex];
+      const lineText = row?.querySelector('.line-text');
+      if (!lineText) return;
+      const text = lineText.textContent;
+
+      lineMatches.sort((a, b) => a.start - b.start);
+      lineText.innerHTML = '';
+      let cursor = 0;
+      lineMatches.forEach((m) => {
+        const before = text.slice(cursor, m.start);
+        if (before) lineText.appendChild(document.createTextNode(before));
+        const mark = document.createElement('mark');
+        const isActive = m.idx === replaceActiveIndex;
+        mark.className = isActive ? 'replace-highlight-active' : 'replace-highlight-match';
+        mark.textContent = text.slice(m.start, m.end);
+        lineText.appendChild(mark);
+        if (isActive) activeMarkEl = mark;
+        cursor = m.end;
+      });
+      const after = text.slice(cursor);
+      if (after) lineText.appendChild(document.createTextNode(after));
+
+      replaceHighlightedEls.push(lineText);
+    });
+
+    if (activeMarkEl) {
+      activeMarkEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
   }
 
   function updateReplaceMatchCountUI() {
@@ -1043,19 +1124,18 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
     replaceMatches = computeReplaceMatches();
     if (replaceMatches.length === 0) {
       replaceActiveIndex = -1;
-      clearReplaceHighlight();
     } else {
       const base = keepIndex && replaceActiveIndex >= 0 ? replaceActiveIndex : 0;
       replaceActiveIndex = Math.min(base, replaceMatches.length - 1);
-      highlightReplaceMatch(replaceMatches[replaceActiveIndex]);
     }
+    renderReplaceHighlights();
     updateReplaceMatchCountUI();
   }
 
   function goToReplaceMatch(step) {
     if (replaceMatches.length === 0) return;
     replaceActiveIndex = (replaceActiveIndex + step + replaceMatches.length) % replaceMatches.length;
-    highlightReplaceMatch(replaceMatches[replaceActiveIndex]);
+    renderReplaceHighlights();
     updateReplaceMatchCountUI();
   }
 
@@ -1080,57 +1160,65 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
 
   // Thay the TAT CA match trong pham vi da chon (OCR/Translation) - thay
   // truc tiep tung anh mot, khong dung toi phan tong hop.
+  //
+  // QUAN TRONG: thay vi tu dung 1 regex rieng quet lai toan bo chuoi (cach
+  // cu), ham nay dung LAI CHINH XAC danh sach `replaceMatches` da tinh san
+  // (tu findLineMatches, cung 1 nguon voi so "X/Y" dang hien tren thanh
+  // Replace) - dam bao so dong THUC SU duoc thay LUON KHOP voi so dang
+  // hien thi, ke ca khi nhieu dong khop nam KE NHAU (truoc day 2 duong
+  // tinh toan tach biet - 1 ben quet tung dong, 1 ben quet ca chuoi bang
+  // regex - co the lech nhau trong vai truong hop Unicode, khien vai dong
+  // ke nhau bi gop tinh thanh 1, thay thieu).
   function doReplaceAllMatches() {
     const needle = replaceFindInput.value;
     if (!needle || replaceMatches.length === 0) return;
     const replacement = replaceWithInput.value;
-    const wholeWord = replaceWholeWord.checked;
-    const startWith = replaceStartWith.checked;
-    // "Start with" luon khong phan biet hoa/thuong (phai xoa duoc du hoa
-    // hay thuong), bat ke Match case dang tick hay khong - checkbox Match
-    // case cung da bi khoa/an tren giao dien khi Start with duoc bat.
-    const caseSensitive = startWith ? false : replaceCaseSensitive.checked;
-    const escaped = escapeRegExp(needle);
-    let pattern;
-    let flags = caseSensitive ? 'gu' : 'giu';
-    if (needle === PUNCT_ONLY_TOKEN) {
-      // Che do dac biet: thay/xoa nguyen dong CHI TOAN DAU CAU (khong chu,
-      // khong so) - dung chung regex voi isPunctuationOnlyLine() de dam
-      // bao logic Replace/Replace all va logic dem/highlight nhat quan.
-      pattern = '^(?=.*\\p{P})[\\p{P}\\s]+$';
-      flags = 'gmu';
-    } else if (startWith) {
-      // Neo vao dau dong (^) va an het phan con lai cua dong (.*) de
-      // thay the/xoa NGUYEN CA DONG bat dau bang needle - vd needle
-      // "*sfx" se khop het "*sfx: vu vu" lan "*Sfx: cach cach".
-      pattern = `^${escaped}.*$`;
-      flags += 'm'; // multiline: ^ va $ khop tung dong thay vi ca chuoi
-    } else {
-      // Whole word: dung lookaround Unicode thay vi \b (\b chi hieu ky tu
-      // ASCII) de ranh gioi tu hoat dong dung voi ca chu cai co dau/CJK.
-      pattern = wholeWord ? `(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])` : escaped;
-    }
-    const regex = new RegExp(pattern, flags);
-    const searchOcr = replaceScopeOcr.checked;
-    const searchTranslation = replaceScopeTranslation.checked;
+
+    // Gom cac match theo tung khoi text (1 anh + 1 loai OCR/Trans) de sua
+    // 1 lan cho khoi do, tranh doc/ghi imgData nhieu lan khong can thiet.
+    const blocks = new Map(); // key "kind-imageIndex" -> { imageIndex, kind, matches: [] }
+    replaceMatches.forEach((m) => {
+      const key = `${m.kind}-${m.imageIndex}`;
+      if (!blocks.has(key)) blocks.set(key, { imageIndex: m.imageIndex, kind: m.kind, matches: [] });
+      blocks.get(key).matches.push(m);
+    });
+
     let replacedCount = 0;
     const undoChanges = [];
 
-    uploadedImages.forEach((imgData, imageIndex) => {
-      if (searchOcr && imgData.ocrResult && regex.test(imgData.ocrResult)) {
-        regex.lastIndex = 0;
-        replacedCount += (imgData.ocrResult.match(regex) || []).length;
-        undoChanges.push({ imageIndex, kind: 'ocr', previousText: imgData.ocrResult });
-        imgData.ocrResult = imgData.ocrResult.replace(regex, replacement);
-        setTextBlock(`ocr-${imageIndex}`, imgData.ocrResult);
-      }
-      if (searchTranslation && imgData.translationResult && regex.test(imgData.translationResult)) {
-        regex.lastIndex = 0;
-        replacedCount += (imgData.translationResult.match(regex) || []).length;
-        undoChanges.push({ imageIndex, kind: 'translation', previousText: imgData.translationResult });
-        imgData.translationResult = imgData.translationResult.replace(regex, replacement);
-        setTextBlock(`translation-${imageIndex}`, imgData.translationResult);
-      }
+    blocks.forEach(({ imageIndex, kind, matches }) => {
+      const imgData = uploadedImages[imageIndex];
+      if (!imgData) return;
+      const original = kind === 'ocr' ? imgData.ocrResult : imgData.translationResult;
+      if (!original) return;
+      const lines = original.split('\n');
+
+      // Gom tiep theo tung dong trong khoi nay - 1 dong co the co NHIEU
+      // match (vd tim thay 2 lan tren cung 1 dong dai).
+      const byLine = new Map();
+      matches.forEach((m) => {
+        if (!byLine.has(m.lineIndex)) byLine.set(m.lineIndex, []);
+        byLine.get(m.lineIndex).push(m);
+      });
+
+      byLine.forEach((lineMatches, lineIndex) => {
+        // Thay tu PHAI SANG TRAI trong dong (start giam dan) de vi tri
+        // cac match con lai KHONG bi lech di khi 1 match phia truoc no
+        // (start nho hon) da bi thay va lam doi do dai dong.
+        lineMatches.sort((a, b) => b.start - a.start);
+        let line = lines[lineIndex];
+        lineMatches.forEach((m) => {
+          line = line.slice(0, m.start) + replacement + line.slice(m.end);
+          replacedCount++;
+        });
+        lines[lineIndex] = line;
+      });
+
+      const updated = lines.join('\n');
+      undoChanges.push({ imageIndex, kind, previousText: original });
+      if (kind === 'ocr') imgData.ocrResult = updated;
+      else imgData.translationResult = updated;
+      setTextBlock(`${kind}-${imageIndex}`, updated);
     });
 
     pushReplaceUndo(undoChanges);
@@ -1149,7 +1237,7 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
   }
   function closeReplaceBar() {
     replaceBar.style.display = 'none';
-    clearReplaceHighlight();
+    clearReplaceHighlights();
     replaceMatches = [];
     replaceActiveIndex = -1;
     replaceUndoStack = [];
@@ -3121,13 +3209,41 @@ else {
     if (count > 0) {
       selectionBar.style.display = 'flex';
       selectionCountEl.textContent = count;
+      selectionBarToggleCount.textContent = count;
       navFabSelectionHead.style.display = 'flex';
       navFabSelectionCount.textContent = t('selection_count', { count });
     } else {
       selectionBar.style.display = 'none';
       navFabSelectionHead.style.display = 'none';
+      closeSelectionBarPanel();
     }
   }
+
+  // Mo/dong panel chuc nang cua nut vuong thu gon (chi co y nghia tren
+  // mobile - tren desktop panel luon hien san qua CSS nen cac ham nay vo
+  // hai, khong lam gi khac biet).
+  function closeSelectionBarPanel() {
+    selectionBarPanel.classList.remove('open');
+    selectionBarToggle.classList.remove('open');
+  }
+  selectionBarToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !selectionBarPanel.classList.contains('open');
+    if (willOpen) {
+      selectionBarPanel.classList.add('open');
+      selectionBarToggle.classList.add('open');
+    } else {
+      closeSelectionBarPanel();
+    }
+  });
+  // Bam vao ben trong panel (nut OCR/Translate/Refine/Deselect) khong
+  // duoc lam dong panel qua som - chi dong khi bam ra ngoai ca nut vuong
+  // lan panel.
+  document.addEventListener('click', (e) => {
+    if (!selectionBarToggle.contains(e.target) && !selectionBarPanel.contains(e.target)) {
+      closeSelectionBarPanel();
+    }
+  });
 
   function clearSelection() {
     if (selectedUids.size === 0) return;

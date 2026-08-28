@@ -519,6 +519,19 @@ select:focus, input:focus { outline: 1px solid var(--accent); border-color: var(
 .selection-bar-actions { display: flex; gap: 6px; }
 .selection-bar-actions .btn { padding: 6px 12px; font-size: 12px; white-space: nowrap; }
 
+/* selection-bar-panel: khoi chua count+actions thuc su. Tren desktop no
+   chi la 1 flex row binh thuong, giu nguyen dung y het .selection-bar
+   truoc day (khong doi gi ve mat hinh anh) - viec thu gon thanh nut vuong
+   + xoe panel chi xay ra tren mobile (xem CSS mobile ben duoi). */
+.selection-bar-panel {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+/* selection-bar-toggle: nut vuong thu gon, CHI dung tren mobile - an mac
+   dinh tren desktop de khong xuat hien thua. */
+.selection-bar-toggle { display: none; }
+
 @media (max-width: 640px) {
   .selection-bar {
     flex-wrap: wrap;
@@ -560,6 +573,7 @@ select:focus, input:focus { outline: 1px solid var(--accent); border-color: var(
 
 .replace-bar-row { display: flex; align-items: center; gap: 8px; }
 .replace-bar-row-main { flex-wrap: nowrap; }
+.replace-bar-row-secondary { display: flex; align-items: center; gap: 8px; }
 
 .replace-bar-icon { color: var(--text-muted); flex-shrink: 0; }
 
@@ -637,6 +651,10 @@ select:focus, input:focus { outline: 1px solid var(--accent); border-color: var(
 .replace-dropdown-caret { display: inline-flex; transition: transform 0.15s ease; }
 .replace-dropdown-caret svg { width: 12px; height: 12px; }
 .replace-dropdown-btn.open .replace-dropdown-caret { transform: rotate(180deg); }
+/* Icon rieng cho mobile (thay chu "Position"/"Special" bang svg cho gon) -
+   an mac dinh tren desktop, chi hien qua CSS mobile ben duoi. */
+.replace-dropdown-icon { display: none; }
+.replace-dropdown-icon svg { width: 16px; height: 16px; }
 
 .replace-dropdown-menu {
   display: none;
@@ -690,6 +708,18 @@ mark.replace-highlight-active {
   color: #14161c;
   padding: 0 1px;
   border-radius: 2px;
+}
+
+/* Highlight NHE cho cac match TIM THAY nhung chua phai cai dang active -
+   giup nhin duoc tong quan con bao nhieu cho da khop tren toan bo cac
+   anh, phan biet ro voi 1 cho dang active (dam, dung mau --accent o
+   tren) bang cach dung --accent-soft lam nen va vien nhe mau accent. */
+mark.replace-highlight-match {
+  background: var(--accent-soft);
+  color: var(--text);
+  padding: 0 1px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
 }
 
 @media (max-width: 640px) {
@@ -2168,31 +2198,182 @@ body[data-ui-mode="mobile"] .btn { min-height: 44px; }
 body[data-ui-mode="mobile"] .summary { flex-direction: column; padding: 0 12px 16px; }
 
 /* --- Thanh chon nhieu anh, Find & Replace: gon vao trong man hinh --- */
-body[data-ui-mode="mobile"] .selection-bar { max-width: calc(100vw - 20px); }
-/* Vien "dang chon nhieu anh" (selection-bar) o mobile: chuyen LEN TREN
-   thay vi nam duoi cung nhu Desktop, vi phia duoi da co pill nav-fab-toggle
-   (thong bao/xac nhan/nhap) va nut FAB - de ca 2 chong len nhau rat kho
-   bam. Doi luon huong animation cho tu nhien (truot xuong tu tren thay vi
-   truot len tu duoi). */
+/* Selection bar tren mobile: thu gon thanh 1 nut VUONG nho, dat DOI DIEN
+   voi pill tron nav-fab-toggle (nav-fab dang o goc trai-duoi: left:12px;
+   bottom:14px -> nut nay o goc phai-duoi: right:12px; bottom:14px, cung
+   1 hang ngang cho can doi). Bam vao nut vuong moi xoe panel chuc nang
+   len TREN va CANH PHAI (bottom:100%; right:0), cac nut xep DOC de de
+   thao tac bang ngon tay cai. Tren desktop hanh vi cu (pill ngang, luon
+   hien) khong doi gi (xem rule .selection-bar-panel/.selection-bar-toggle
+   goc, khong scope mobile). */
 body[data-ui-mode="mobile"] .selection-bar {
-  top: 12px;
-  bottom: auto;
-  animation: selectionBarInTopMobile 0.3s var(--ease-spring);
+  left: auto;
+  right: 12px;
+  top: auto;
+  bottom: 14px;
+  transform: none;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  animation: none;
+  display: block;
+  z-index: 250;
 }
-@keyframes selectionBarInTopMobile {
-  from { opacity: 0; transform: translateX(-50%) translateY(-14px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+body[data-ui-mode="mobile"] .selection-bar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  border: 1px solid var(--accent-soft);
+  background: var(--panel);
+  color: var(--accent);
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
 }
-body[data-ui-mode="mobile"] .selection-bar-actions { flex-wrap: wrap; justify-content: center; }
+body[data-ui-mode="mobile"] .selection-bar-toggle svg { width: 18px; height: 18px; }
+/* Trang thai dang mo panel: doi mau dam de nguoi dung biet minh vua bam
+   mo, dong bo phong cach voi .replace-dropdown-btn.open da co san. */
+body[data-ui-mode="mobile"] .selection-bar-toggle.open {
+  color: #14161c;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+/* So luong anh dang chon, hien nhu 1 badge nho o goc tren-phai nut vuong -
+   giup nhan biet nhanh ma khong can mo panel ra xem. */
+body[data-ui-mode="mobile"] .selection-bar-toggle-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #14161c;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  /* Vien mau nen panel bao quanh badge, giu badge luon "noi" ro rang du
+     nut phia sau dang mau trong suot (mac dinh) hay dac accent (.open). */
+  border: 2px solid var(--panel);
+  box-sizing: content-box;
+}
+body[data-ui-mode="mobile"] .selection-bar-panel {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 220px;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--accent-soft);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 0 4px var(--accent-soft), 0 0 22px var(--accent-soft);
+}
+body[data-ui-mode="mobile"] .selection-bar-panel.open { display: flex; }
+body[data-ui-mode="mobile"] .selection-bar-count { text-align: right; white-space: normal; }
+body[data-ui-mode="mobile"] .selection-bar-actions {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+body[data-ui-mode="mobile"] .selection-bar-actions .btn { width: 100%; }
+body[data-ui-mode="mobile"] .refine-dropdown { width: 100%; }
+body[data-ui-mode="mobile"] .refine-btn { width: 100%; }
+
+/* Khi menu "Refine OCR selected"/"Refine Translation selected" dang mo
+   (nguoi dung vua bam "Refine selected"), lam mo cac phan con lai cua
+   panel (OCR selected, Translate selected, Deselect, dong chu so luong)
+   de 2 muc refine noi bat, de nhin/de chon hon - CHI ap dung cho panel
+   thu gon tren mobile, khong dung tren Desktop. Cho phep animation
+   opacity muot bang cach khai bao transition o trang thai binh thuong
+   (khong dieu kien) truoc, roi rule :has() ben duoi chi doi opacity. */
+body[data-ui-mode="mobile"] #selection-bar-panel .selection-bar-count,
+body[data-ui-mode="mobile"] #selection-bar-panel .selection-bar-actions > .btn {
+  transition: opacity 0.15s ease;
+}
+body[data-ui-mode="mobile"] #selection-bar-panel:has(.refine-menu.open) > .selection-bar-count,
+body[data-ui-mode="mobile"] #selection-bar-panel:has(.refine-menu.open) .selection-bar-actions > .btn {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
 body[data-ui-mode="mobile"] .replace-bar-row-options { justify-content: flex-start; }
-/* Duong ke doc ngan cach nut Replace/Replace all chi hop ly khi con nam
-   chung hang voi 2 nut dropdown Position/Special - tren man hinh dien
-   thoai rat hep co the phai xuong dong rieng, luc do bo duong ke di cho
-   khong bi mot gach doc mo coi tro le dau hang. */
+/* Tren mobile, Position/Special da duoc JS chuyen hang sang chung voi
+   nut X (khong con nam trong replace-bar-row-options nua) nen day chi
+   con lai 2 nut Replace/Replace all - bo duong ke doc + gom sat trai
+   cho gon, khong con can day sang phai/tach biet nhu tren Desktop. */
 body[data-ui-mode="mobile"] .replace-bar-actions {
   margin-left: 0;
   padding-left: 0;
   border-left: none;
+}
+
+/* Position/Special: chuyen len chung hang voi nut X (xem JS
+   applyReplaceBarLayoutForUIMode - chuyen hang di DOM that su, khong
+   phai chi CSS, vi 2 nut nay von nam o hang rieng ben duoi ben Desktop).
+   Tren mobile chi hien 1 icon nho (an chu "Position"/"Special", so dem
+   "(x/y)", va mui ten caret de tiet kiem khong gian toi da), thu thanh
+   hinh tron 44px dong bo voi cac nut khac cung hang (X, len/xuong). */
+body[data-ui-mode="mobile"] .replace-dropdown-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+body[data-ui-mode="mobile"] .replace-dropdown-label,
+body[data-ui-mode="mobile"] .replace-dropdown-count,
+body[data-ui-mode="mobile"] .replace-dropdown-caret {
+  display: none;
+}
+body[data-ui-mode="mobile"] .replace-dropdown-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+}
+
+/* Yeu cau: hang 2 (nut len/xuong + so luong match + Position/Special +
+   nut X) tren mobile LUON xuong dong rieng, bat ke con du cho tren hang
+   1 hay khong - dung flex-basis:100% (ep flex item chiem tron 1 hang)
+   thay vi cho flex-wrap tu quyet dinh theo be rong man hinh. */
+body[data-ui-mode="mobile"] .replace-bar-row-main { flex-wrap: wrap; }
+body[data-ui-mode="mobile"] .replace-bar-row-secondary {
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 2px;
+}
+/* Nut X (dong thanh Replace) day han sang phai (cach xa nut len/xuong)
+   de tranh bam nham khi dang thao tac dieu huong match, va duoc "nhan
+   manh" bang mau accent lien tuc (khong doi mau khi hover nhu 2 nut kia)
+   de nguoi dung de dang nhan ra day la nut rieng, quan trong. */
+body[data-ui-mode="mobile"] .replace-close-btn {
+  margin-left: auto;
+  color: var(--accent);
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+}
+body[data-ui-mode="mobile"] .replace-close-btn:hover,
+body[data-ui-mode="mobile"] .replace-close-btn:active {
+  color: #14161c;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 /* --- FAB dieu huong: keo vao gan mep hon --- */
