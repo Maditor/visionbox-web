@@ -3239,7 +3239,14 @@ else {
   // Bam vao ben trong panel (nut OCR/Translate/Refine/Deselect) khong
   // duoc lam dong panel qua som - chi dong khi bam ra ngoai ca nut vuong
   // lan panel.
+  //
+  // Tren MOBILE: yeu cau panel phai "co dinh" khi da mo - KHONG tu dong
+  // dong khi bam ra cho khac (vd bam vao anh, cuon trang...) nua, CHI dong
+  // duoc bang cach bam LAI chinh nut vuong (da xu ly san trong listener
+  // cua selectionBarToggle o tren). Vi vay bo qua hoan toan logic dong-khi-
+  // bam-ra-ngoai ben duoi khi dang o che do mobile.
   document.addEventListener('click', (e) => {
+    if (document.body.getAttribute('data-ui-mode') === 'mobile') return;
     if (!selectionBarToggle.contains(e.target) && !selectionBarPanel.contains(e.target)) {
       closeSelectionBarPanel();
     }
