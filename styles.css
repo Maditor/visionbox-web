@@ -2273,7 +2273,10 @@ body[data-ui-mode="mobile"] .selection-bar-toggle-count {
 body[data-ui-mode="mobile"] .selection-bar-panel {
   display: none;
   position: absolute;
-  bottom: calc(100% + 10px);
+  /* Day len cao hon truoc (10px -> 40px, tuc them ~30px) de tranh de len
+     nut pill tron nav-fab-toggle o goc doi dien khi pill do phinh to ra
+     (vd luc dang hien thanh tien trinh xu ly). */
+  bottom: calc(100% + 40px);
   right: 0;
   flex-direction: column;
   align-items: stretch;
