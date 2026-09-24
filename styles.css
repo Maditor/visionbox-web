@@ -379,6 +379,8 @@ select:focus, input:focus { outline: 1px solid var(--accent); border-color: var(
 .settings-panel.open { display: flex; }
 
 .settings-divider { height: 1px; background: var(--border); margin: 2px 0; }
+.settings-panel .settings-toggle { align-self: flex-start; }
+.settings-panel .settings-toggle .toggle-label { white-space: nowrap; }
 .settings-panel-btn {
   width: 100%;
   justify-content: flex-start;

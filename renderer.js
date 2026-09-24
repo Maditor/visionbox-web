@@ -165,6 +165,7 @@
   const sourceLangSelect = document.getElementById('source-lang-select');
   const targetLangSelect = document.getElementById('target-lang-select');
   const skipSfxToggle = document.getElementById('skip-sfx-toggle');
+  const autoSwitchModelToggle = document.getElementById('auto-switch-model-toggle');
   const themeSelect = document.getElementById('theme-select');
   const uiModeSelect = document.getElementById('ui-mode-select');
   const contentTypeBtn = document.getElementById('content-type-btn');
@@ -475,6 +476,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
       sourceLang: sourceLangSelect.value,
       targetLang: targetLangSelect.value,
       skipSfx: skipSfxToggle.checked,
+      autoSwitchModel: autoSwitchModelToggle.checked,
       theme: themeSelect.value,
       uiMode: uiModeSelect.value,
       contentFontSize: contentFontSize,
@@ -517,6 +519,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
 
     if (cfg.targetLang) targetLangSelect.value = cfg.targetLang;
     if (typeof cfg.skipSfx === 'boolean') skipSfxToggle.checked = cfg.skipSfx;
+    if (typeof cfg.autoSwitchModel === 'boolean') autoSwitchModelToggle.checked = cfg.autoSwitchModel;
     if (cfg.theme === 'dark' || cfg.theme === 'light') {
       themeSelect.value = cfg.theme;
     } else if (typeof cfg.darkMode === 'boolean') {
@@ -598,7 +601,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
 
   setInterval(performAutoSave, AUTO_SAVE_INTERVAL_MS);
 
-  [apiKeyInput, sourceLangSelect, targetLangSelect, skipSfxToggle].forEach(el => {
+  [apiKeyInput, sourceLangSelect, targetLangSelect, skipSfxToggle, autoSwitchModelToggle].forEach(el => {
     el.addEventListener('change', scheduleSaveConfig);
     el.addEventListener('input', scheduleSaveConfig);
   });
@@ -608,6 +611,25 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
     scheduleSaveConfig();
   });
   modelCustomInput.addEventListener('input', scheduleSaveConfig);
+
+  // Chon model du phong khi model hien tai qua tai: di theo thu tu trong
+  // danh sach Model, bat dau tu model ngay sau model hien tai (vong lai
+  // tu dau), bo qua model da thu trong lan goi nay va o "Other model...".
+  function pickFallbackModel(currentModel, triedModels) {
+    const list = Array.from(modelSelect.options).map(o => o.value).filter(v => v !== '__custom__');
+    const start = list.indexOf(currentModel);
+    for (let k = 1; k <= list.length; k++) {
+      const candidate = list[(start + k + list.length) % list.length];
+      if (!triedModels.has(candidate)) return candidate;
+    }
+    return null;
+  }
+
+  function switchToModel(newModel) {
+    modelSelect.value = newModel;
+    modelCustomInput.style.display = 'none';
+    scheduleSaveConfig();
+  }
 
   function getSelectedModel() {
     if (modelSelect.value === '__custom__') {
@@ -1872,7 +1894,6 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   }
 
   async function callGemini({ apiKey, model, promptText, base64Image, mimeType, temperature, maxOutputTokens, itemIndex }) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const body = {
       contents: [{
         parts: [
@@ -1890,7 +1911,9 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
 
     let attempt = 0;
     let busyAttempt = 0;
+    const triedModels = new Set();
     while (true) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1938,19 +1961,49 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
         if (retryQueueCancelled) {
           throw new Error('Retry queue stopped by user.');
         }
-        if (busyAttempt > MAX_503_RETRIES) {
+        // Da bat tu doi model: chi thu lai 1 lan roi doi luon, khong cho lau.
+        const busyLimit = autoSwitchModelToggle.checked ? 1 : MAX_503_RETRIES;
+        if (busyAttempt > busyLimit) {
           let msg = 'API error (HTTP 503): the model is overloaded. Please try again later.';
           try {
             const errData = await response.json();
             msg = errData.error?.message || msg;
           } catch (_) {}
-          // Dung luon cac anh con lai trong hang cho (model dang nghen thi
-          // chay tiep cung loi), roi hien pill cho nguoi dung bam OK.
+
+          // Chua bat tu doi model -> hoi nguoi dung co muon bat khong
+          if (!autoSwitchModelToggle.checked) {
+            const enable = await showConfirmDialog(t('model_busy_ask_auto', { model }), t('ok_btn'), t('cancel_btn'));
+            if (enable) {
+              autoSwitchModelToggle.checked = true;
+              scheduleSaveConfig();
+            }
+          }
+
+          if (autoSwitchModelToggle.checked) {
+            triedModels.add(model);
+            const nextModel = pickFallbackModel(model, triedModels);
+            if (nextModel) {
+              // Doi model tren giao dien + tiep tuc ngay anh dang lam; cac anh
+              // sau trong batch tu dung model moi (getSelectedModel()).
+              model = nextModel;
+              busyAttempt = 0;
+              switchToModel(nextModel);
+              showToast(t('model_switched', { model: nextModel }), 'info');
+              continue;
+            }
+            // Da thu het cac model trong danh sach
+            stopRequested = true;
+            await showConfirmDialog(t('all_models_busy'), undefined, undefined, true);
+            throw new Error(msg);
+          }
+
+          // Nguoi dung khong bat: dung cac anh con lai trong hang cho (model
+          // dang nghen thi chay tiep cung loi), bao doi model thu cong.
           stopRequested = true;
           await showConfirmDialog(t('model_busy_switch', { model }), undefined, undefined, true);
           throw new Error(msg);
         }
-        showToast(t('model_busy_retry', { seconds: BUSY_RETRY_WAIT_MS / 1000, attempt: busyAttempt, max: MAX_503_RETRIES }), 'warning');
+        showToast(t('model_busy_retry', { seconds: BUSY_RETRY_WAIT_MS / 1000, attempt: busyAttempt, max: busyLimit }), 'warning');
         showRetryStopButton(itemIndex);
 
         const cancelled = await new Promise((resolve) => {

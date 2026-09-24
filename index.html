@@ -35,7 +35,11 @@
       <select id="model-select">
         <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite</option>
         <option value="gemini-3.1-flash-lite" selected>gemini-3.1-flash-lite</option>
-        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+        <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+        <option value="gemini-3.7-flash">gemini-3.7-flash</option>
+        <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+        <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+        <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
         <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
         <option value="__custom__" data-i18n="model_other">Other model...</option>
       </select>
@@ -144,6 +148,13 @@
       <option value="vi">Tiếng Việt</option>
     </select>
   </div>
+
+          <!-- Tu dong doi sang model khac khi model hien tai qua tai (503) -->
+          <label class="toggle-field settings-toggle" for="auto-switch-model-toggle">
+            <input type="checkbox" id="auto-switch-model-toggle" />
+            <span class="toggle-switch"></span>
+            <span class="toggle-label" data-i18n="auto_switch_model_label">Auto-switch model when overloaded</span>
+          </label>
 
           <!-- Các cài đặt khác sẽ thêm sau -->
           <div class="settings-divider"></div>
