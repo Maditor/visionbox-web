@@ -1817,6 +1817,11 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   // ---------- Gemini calls ----------
   const MAX_429_RETRIES = 6;
   const RETRY_WAIT_MS = 10000; // 10 giay moi lan, toi da 6 lan = 60 giay
+  // 503 = model dang qua tai phia Google (khong phai loi key/quota). Thuong
+  // chi nghen thoang qua nen tu thu lai vai lan; van nghen thi bao nguoi
+  // dung doi model khac (qua tai tinh rieng tung model).
+  const MAX_503_RETRIES = 3;
+  const BUSY_RETRY_WAIT_MS = 8000;
 
   // Chi co 1 luong goi API chay tai 1 thoi diem (bi khoa boi isProcessing),
   // nen chi can 1 "activeRetry" toan cuc de nut Stop retry co the huy ngay
@@ -1884,6 +1889,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
     };
 
     let attempt = 0;
+    let busyAttempt = 0;
     while (true) {
       const response = await fetch(url, {
         method: 'POST',
@@ -1916,6 +1922,39 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
 
         const cancelled = await new Promise((resolve) => {
           const timer = setTimeout(() => resolve(false), RETRY_WAIT_MS);
+          activeRetry = { cancel: () => { clearTimeout(timer); resolve(true); } };
+        });
+        activeRetry = null;
+        hideRetryStopButton(itemIndex);
+
+        if (cancelled || retryQueueCancelled) {
+          throw new Error('Retry queue stopped by user.');
+        }
+        continue;
+      }
+
+      if (response.status === 503) {
+        busyAttempt++;
+        if (retryQueueCancelled) {
+          throw new Error('Retry queue stopped by user.');
+        }
+        if (busyAttempt > MAX_503_RETRIES) {
+          let msg = 'API error (HTTP 503): the model is overloaded. Please try again later.';
+          try {
+            const errData = await response.json();
+            msg = errData.error?.message || msg;
+          } catch (_) {}
+          // Dung luon cac anh con lai trong hang cho (model dang nghen thi
+          // chay tiep cung loi), roi hien pill cho nguoi dung bam OK.
+          stopRequested = true;
+          await showConfirmDialog(t('model_busy_switch', { model }), undefined, undefined, true);
+          throw new Error(msg);
+        }
+        showToast(t('model_busy_retry', { seconds: BUSY_RETRY_WAIT_MS / 1000, attempt: busyAttempt, max: MAX_503_RETRIES }), 'warning');
+        showRetryStopButton(itemIndex);
+
+        const cancelled = await new Promise((resolve) => {
+          const timer = setTimeout(() => resolve(false), BUSY_RETRY_WAIT_MS);
           activeRetry = { cancel: () => { clearTimeout(timer); resolve(true); } };
         });
         activeRetry = null;
