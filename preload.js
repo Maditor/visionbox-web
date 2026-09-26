@@ -1,5 +1,7 @@
 
 (() => {
+  // Ban web (khong co Tauri): bo qua, renderer.js tu dung localStorage + tai file ve may
+  if (!window.__TAURI__?.core) return;
   const { invoke } = window.__TAURI__.core;
 
   window.appConfig = {

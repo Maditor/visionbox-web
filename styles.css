@@ -2504,3 +2504,19 @@ body[data-ui-mode="desktop"] {
     transform: none;
   }
 }
+
+/* ---------- Model "Other model...": o nhap thay cho dropdown ---------- */
+#model-custom-wrap input { min-width: 0; }
+#model-back-btn { padding: 0 8px; }
+
+/* ---------- Nut Get key mau cam khi Server = Cloudflare ---------- */
+#get-key-btn.is-cloudflare {
+  background: #f6821f;
+  border-color: #f6821f;
+  color: #fff;
+}
+#get-key-btn.is-cloudflare:hover {
+  background: #e0701a;
+  border-color: #e0701a;
+  color: #fff;
+}

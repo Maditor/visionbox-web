@@ -173,9 +173,36 @@
   const contentTypeMenu = document.getElementById('content-type-menu');
   const modelSelect = document.getElementById('model-select');
   const modelCustomInput = document.getElementById('model-custom-input');
+  const modelCustomWrap = document.getElementById('model-custom-wrap');
+  const modelBackBtn = document.getElementById('model-back-btn');
+  const toggleCfAccountBtn = document.getElementById('toggle-cf-account-btn');
   const apiKeyInput = document.getElementById('api-key-input');
   const toggleKeyBtn = document.getElementById('toggle-key-btn');
   const getKeyBtn = document.getElementById('get-key-btn');
+  const serverSelect = document.getElementById('server-select');
+  const cfAccountField = document.getElementById('cf-account-field');
+  const cfAccountInput = document.getElementById('cf-account-input');
+  const apiKeyLabel = document.querySelector('label[for="api-key-input"]');
+
+  // ---------- Server AI: Gemini (mac dinh) / Cloudflare ----------
+  // Moi server nho RIENG key + model cua no: doi qua lai khong mat gi, va
+  // nhanh Gemini giu nguyen hanh vi cu (key/model luu o cfg.apiKey/cfg.model
+  // nhu truoc, nguoi dung cu mo app len van y nguyen).
+  const DEFAULT_MODEL = { gemini: 'gemini-3.1-flash-lite', cloudflare: '@cf/google/gemma-4-26b-a4b-it' };
+  const GEMINI_MODEL_OPTIONS = Array.from(modelSelect.options)
+    .filter(o => o.value !== '__custom__')
+    .map(o => ({ value: o.value, label: o.textContent }));
+  const CF_MODEL_OPTIONS = [
+    { value: '@cf/google/gemma-4-26b-a4b-it', i18n: 'cf_model_gemma' },
+    { value: '@cf/qwen/qwen3.8-27b', i18n: 'cf_model_qwen' },
+  ];
+  const GET_KEY_URL = {
+    gemini: 'https://aistudio.google.com/api-keys',
+    cloudflare: 'https://dash.cloudflare.com/profile/api-tokens',
+  };
+  let currentServer = 'gemini';
+  const keyByServer = { gemini: '', cloudflare: '' };
+  const modelByServer = { ...DEFAULT_MODEL };
   // Thong bao (toast) gio hien ngay trong pill nav-fab-toggle thay vi goc man hinh
   const navFabToastDot = document.getElementById('nav-fab-toast-dot');
   const navFabToastText = document.getElementById('nav-fab-toast-text');
@@ -337,9 +364,11 @@ const isInEditableEditBox = e.target && e.target.isContentEditable &&
   typeof targetId === 'string' &&
   (targetId.startsWith('ocr-') || targetId.startsWith('translation-') ||
    targetId === 'summary-ocr-all' || targetId === 'summary-translation-all');
-const isCtrlAAllowedHere = ctrl && !shift && key === 'a' &&
-  (targetId === 'nav-fab-prompt-input' || targetId === 'api-key-input' ||
-   targetId === 'replace-find-input' || targetId === 'replace-with-input' || isInEditableEditBox);
+const isTextFieldHere = targetId === 'nav-fab-prompt-input' || targetId === 'api-key-input' ||
+  targetId === 'cf-account-input' || targetId === 'model-custom-input' ||
+  targetId === 'replace-find-input' || targetId === 'replace-with-input' || isInEditableEditBox;
+// Ctrl+A (chon het) va Ctrl+X (cat) chi mo trong cac o nhap chu
+const isCtrlAAllowedHere = ctrl && !shift && (key === 'a' || key === 'x') && isTextFieldHere;
 
 // Chỉ cho phép nếu là phím tắt của ứng dụng, hoặc các phím thông thường...
 const isAppShortcut = allowedAppShortcuts.some(s => 
@@ -469,9 +498,14 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
   }
 
   function buildConfigPayload() {
+    syncServerStateFromUI();
     return {
-      apiKey: apiKeyInput.value.trim(),
-      model: getSelectedModel(),
+      apiKey: keyByServer.gemini,
+      model: modelByServer.gemini,
+      server: currentServer,
+      cfApiToken: keyByServer.cloudflare,
+      cfAccountId: cfAccountInput.value.trim(),
+      cfModel: modelByServer.cloudflare,
       contentType: currentContentType,
       sourceLang: sourceLangSelect.value,
       targetLang: targetLangSelect.value,
@@ -495,17 +529,13 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
 
   async function loadConfig() {
     const cfg = (await window.appConfig.get()) || {};
-    if (cfg.apiKey) apiKeyInput.value = cfg.apiKey;
-    if (cfg.model) {
-      const knownValues = Array.from(modelSelect.options).map(o => o.value);
-      if (knownValues.includes(cfg.model)) {
-        modelSelect.value = cfg.model;
-      } else {
-        modelSelect.value = '__custom__';
-        modelCustomInput.style.display = 'block';
-        modelCustomInput.value = cfg.model;
-      }
-    }
+    keyByServer.gemini = cfg.apiKey || '';
+    if (cfg.model) modelByServer.gemini = cfg.model;
+    keyByServer.cloudflare = cfg.cfApiToken || '';
+    if (cfg.cfModel) modelByServer.cloudflare = cfg.cfModel;
+    cfAccountInput.value = cfg.cfAccountId || '';
+    currentServer = cfg.server === 'cloudflare' ? 'cloudflare' : 'gemini';
+    applyServerUI();
     // Xac dinh Content type: uu tien gia tri da luu, neu chua co (config cu)
     // thi suy ra tu sourceLang da luu, mac dinh la webtoon.
     let contentType = 'webtoon';
@@ -607,10 +637,113 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
   });
 
   modelSelect.addEventListener('change', () => {
-    modelCustomInput.style.display = modelSelect.value === '__custom__' ? 'block' : 'none';
+    const isCustom = modelSelect.value === '__custom__';
+    showCustomModelInput(isCustom);
+    if (isCustom) modelCustomInput.focus();
+    modelByServer[currentServer] = getSelectedModel();
     scheduleSaveConfig();
   });
-  modelCustomInput.addEventListener('input', scheduleSaveConfig);
+  modelCustomInput.addEventListener('input', () => {
+    modelByServer[currentServer] = getSelectedModel();
+    scheduleSaveConfig();
+  });
+
+  // "Other model...": o nhap chiem dung cho cua dropdown (cung do rong),
+  // bam nut danh sach (hoac Esc) de quay lai dropdown.
+  function showCustomModelInput(on) {
+    if (on && modelSelect.style.display !== 'none') {
+      const isMobileUI = document.body.getAttribute('data-ui-mode') === 'mobile';
+      const w = modelSelect.offsetWidth, h = modelSelect.offsetHeight;
+      // Giu nguyen kich thuoc cua dropdown -> giao dien khong bi xo lech
+      modelCustomWrap.style.width = !isMobileUI && w ? w + 'px' : '';
+      modelCustomWrap.style.height = !isMobileUI && h ? h + 'px' : '';
+    }
+    modelSelect.style.display = on ? 'none' : '';
+    modelCustomWrap.style.display = on ? '' : 'none';
+  }
+
+  function backToModelList() {
+    const values = Array.from(modelSelect.options).map(o => o.value).filter(v => v !== '__custom__');
+    modelSelect.value = values.includes(DEFAULT_MODEL[currentServer]) ? DEFAULT_MODEL[currentServer] : values[0];
+    showCustomModelInput(false);
+    modelByServer[currentServer] = getSelectedModel();
+    scheduleSaveConfig();
+    modelSelect.focus();
+  }
+  modelBackBtn.addEventListener('click', backToModelList);
+  modelCustomInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); backToModelList(); }
+  });
+  toggleCfAccountBtn.addEventListener('click', () => {
+    cfAccountInput.type = cfAccountInput.type === 'password' ? 'text' : 'password';
+  });
+  apiKeyInput.addEventListener('input', () => { keyByServer[currentServer] = apiKeyInput.value.trim(); });
+  cfAccountInput.addEventListener('input', scheduleSaveConfig);
+  serverSelect.addEventListener('change', () => {
+    syncServerStateFromUI();
+    currentServer = serverSelect.value === 'cloudflare' ? 'cloudflare' : 'gemini';
+    applyServerUI();
+    scheduleSaveConfig();
+  });
+
+  // Doc key/model dang hien tren giao dien vao dung "ngan" cua server hien tai
+  function syncServerStateFromUI() {
+    keyByServer[currentServer] = apiKeyInput.value.trim();
+    modelByServer[currentServer] = getSelectedModel();
+  }
+
+  function renderModelOptions(server) {
+    modelSelect.innerHTML = '';
+    const list = server === 'cloudflare' ? CF_MODEL_OPTIONS : GEMINI_MODEL_OPTIONS;
+    for (const m of list) {
+      const o = document.createElement('option');
+      o.value = m.value;
+      if (m.i18n) { o.dataset.i18n = m.i18n; o.textContent = t(m.i18n); }
+      else o.textContent = m.label;
+      modelSelect.appendChild(o);
+    }
+    const custom = document.createElement('option');
+    custom.value = '__custom__';
+    custom.dataset.i18n = 'model_other';
+    custom.textContent = t('model_other');
+    modelSelect.appendChild(custom);
+  }
+
+  function setModelUI(value) {
+    const known = Array.from(modelSelect.options).map(o => o.value);
+    if (value && known.includes(value) && value !== '__custom__') {
+      modelSelect.value = value;
+      showCustomModelInput(false);
+    } else {
+      modelSelect.value = '__custom__';
+      showCustomModelInput(true);
+      modelCustomInput.value = value || '';
+    }
+  }
+
+  // Doi giao dien theo server: danh sach model, o key, nhan, o Account ID
+  function applyServerUI() {
+    const isCf = currentServer === 'cloudflare';
+    serverSelect.value = currentServer;
+    renderModelOptions(currentServer);
+    setModelUI(modelByServer[currentServer]);
+    apiKeyInput.value = keyByServer[currentServer] || '';
+    if (apiKeyLabel) {
+      apiKeyLabel.dataset.i18n = isCf ? 'cf_api_key_label' : 'api_key_label';
+      apiKeyLabel.textContent = t(apiKeyLabel.dataset.i18n);
+    }
+    apiKeyInput.dataset.i18n = isCf ? 'cf_api_key_placeholder' : 'api_key_placeholder';
+    apiKeyInput.placeholder = t(apiKeyInput.dataset.i18n);
+    cfAccountField.style.display = isCf ? '' : 'none';
+    // Nut "Get key" luon nam ngoai cung ben phai: Gemini -> sau o API key,
+    // Cloudflare -> sau o Account ID (o cuoi cung). Mau cam khi la Cloudflare.
+    const keyWrap = (isCf ? cfAccountInput : apiKeyInput).closest('.input-with-btn');
+    if (keyWrap && getKeyBtn.parentElement !== keyWrap) keyWrap.appendChild(getKeyBtn);
+    getKeyBtn.classList.toggle('is-cloudflare', isCf);
+    // "Tu doi model khi qua tai" chi danh cho Gemini
+    const autoSwitchField = autoSwitchModelToggle.closest('.toggle-field');
+    if (autoSwitchField) autoSwitchField.style.display = isCf ? 'none' : '';
+  }
 
   // Chon model du phong khi model hien tai qua tai: di theo thu tu trong
   // danh sach Model, bat dau tu model ngay sau model hien tai (vong lai
@@ -627,13 +760,14 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
 
   function switchToModel(newModel) {
     modelSelect.value = newModel;
-    modelCustomInput.style.display = 'none';
+    showCustomModelInput(false);
+    modelByServer.gemini = newModel;
     scheduleSaveConfig();
   }
 
   function getSelectedModel() {
     if (modelSelect.value === '__custom__') {
-      return modelCustomInput.value.trim() || 'gemini-3.1-flash-lite';
+      return modelCustomInput.value.trim() || DEFAULT_MODEL[currentServer];
     }
     return modelSelect.value;
   }
@@ -1371,7 +1505,7 @@ document.getElementById('lang-select').addEventListener('change', (e) => {
   });
 
 getKeyBtn.addEventListener('click', async () => {
-  const url = 'https://aistudio.google.com/api-keys';
+  const url = GET_KEY_URL[currentServer] || GET_KEY_URL.gemini;
   try {
     // Gọi command Rust đã có sẵn
     if (window.__TAURI__?.core?.invoke) {
@@ -1397,6 +1531,12 @@ getKeyBtn.addEventListener('click', async () => {
   // Kiem tra o API key da co noi dung chua TRUOC KHI lam bat ky viec gi khac
   // (doc anh, dung base64...) de khong ton thoi gian xu ly neu chua co key.
   async function ensureApiKeyOrWarn() {
+    if (currentServer === 'cloudflare') {
+      if (apiKeyInput.value.trim() && cfAccountInput.value.trim()) return true;
+      await showAlertDialog(t('enter_cf_keys_first'));
+      (cfAccountInput.value.trim() ? apiKeyInput : cfAccountInput).focus();
+      return false;
+    }
     if (apiKeyInput.value.trim()) return true;
     await showAlertDialog(t('enter_api_key_first'));
     apiKeyInput.focus();
@@ -2058,6 +2198,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   }
 
   async function runOCR(imageData, itemIndex) {
+    if (currentServer === 'cloudflare') return cfRunOCR(imageData, itemIndex);
     const apiKey = getApiKey();
     if (!apiKey) throw new Error(t('missing_api_key'));
     const base64 = imageData.dataUrl.split(',')[1];
@@ -2075,6 +2216,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   }
 
   async function runTranslate(imageData, itemIndex) {
+    if (currentServer === 'cloudflare') return cfRunTranslate(imageData, itemIndex);
     const apiKey = getApiKey();
     if (!apiKey) throw new Error(t('missing_api_key'));
     const base64 = imageData.dataUrl.split(',')[1];
@@ -2112,6 +2254,12 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   // ranh gioi bong thoai de gom/tach dong cho dung. Doc lap voi runOCR -
   // khong tai su dung/khong lam thay doi runOCR hay runTranslate.
   async function runRefineOcr(imageData, itemIndex) {
+    if (currentServer === 'cloudflare') {
+      if (!imageData.ocrResult) throw new Error(t('no_ocr_to_refine'));
+      // Cloudflare OCR da tu sap thu tu + tach bong bang code, nen "Refine"
+      // = quet lai tu dau bang cung quy trinh (khong co buoc "doi chieu").
+      return cfRunOCR(imageData, itemIndex);
+    }
     const apiKey = getApiKey();
     if (!apiKey) throw new Error(t('missing_api_key'));
     if (!imageData.ocrResult) throw new Error(t('no_ocr_to_refine'));
@@ -2130,6 +2278,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   }
 
   async function runRefineTranslate(imageData, itemIndex, userInstruction) {
+    if (currentServer === 'cloudflare') return cfRunRefineTranslate(imageData, itemIndex, userInstruction);
     const apiKey = getApiKey();
     if (!apiKey) throw new Error(t('missing_api_key'));
     if (!imageData.translationResult) throw new Error(t('no_translation_to_refine'));
@@ -2148,6 +2297,467 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // =====================================================================
+  // ---------- CLOUDFLARE WORKERS AI (server du phong) ----------
+  // Tach RIENG hoan toan voi nhanh Gemini o tren: chi duoc goi khi
+  // Settings > Server = Cloudflare. Quy trinh OCR da test bang bench
+  // (Gemma 4 26B ~98% tren webtoon):
+  //   cat anh dai thanh lat o khe trong -> model tra JSON {text, box} ->
+  //   CODE tu sap thu tu doc (manga phai->trai, webtoon trai->phai) ->
+  //   bo dong trung o cho 2 lat chong nhau.
+  // Luu y: API Cloudflare CHAN goi truc tiep tu webview (CORS), nen phai
+  // goi qua plugin HTTP cua Tauri (window.__TAURI__.http.fetch).
+  // =====================================================================
+  const CF_API_ORIGIN = 'https://api.cloudflare.com';
+  const CF_API_BASE = CF_API_ORIGIN + '/client/v4/accounts';
+  // Ban WEB (GitHub Pages...): trinh duyet bi CORS chan khi goi thang Cloudflare,
+  // nen di qua Worker trung chuyen (thu muc cloudflare-worker/). Dan URL Worker
+  // cua ban vao day, vd 'https://visionbox-cf-proxy.<ten-ban>.workers.dev'.
+  // Ban app Tauri KHONG dung toi dong nay (goi thang qua plugin HTTP).
+  const CF_WEB_PROXY_URL = (window.VISIONBOX_CF_PROXY || 'https://visionbox-cf-proxy.YOUR-SUBDOMAIN.workers.dev').replace(/\/+$/, '');
+  const CF_OCR_MAX_TOKENS = 8192;
+  const CF_TRANSLATE_MAX_TOKENS = 4096;
+  const CF_MAX_WIDTH = 1200;
+
+  function getCfCreds() {
+    const accountId = cfAccountInput.value.trim();
+    const token = apiKeyInput.value.trim();
+    if (!accountId || !token) {
+      showToast(t('enter_cf_keys_first'), 'error');
+      (accountId ? apiKeyInput : cfAccountInput).focus();
+      return null;
+    }
+    return { accountId, token };
+  }
+
+  async function cfHttpFetch(url, init) {
+    const tauriFetch = window.__TAURI__?.http?.fetch;
+    if (tauriFetch) return tauriFetch(url, init);
+    // Web: doi api.cloudflare.com -> Worker trung chuyen (cung duong dan)
+    if (CF_WEB_PROXY_URL.includes('YOUR-SUBDOMAIN')) throw new Error(t('cf_http_missing'));
+    try {
+      return await fetch(url.replace(CF_API_ORIGIN, CF_WEB_PROXY_URL), init);
+    } catch (err) {
+      // Worker chua dung / sai URL / mat mang -> TypeError "Failed to fetch"
+      throw new Error(t('cf_proxy_failed'));
+    }
+  }
+
+  async function readCfError(response) {
+    const body = await response.text().catch(() => '');
+    try {
+      const j = JSON.parse(body);
+      return j.errors?.[0]?.message || j.error?.message || j.error || `API error (HTTP ${response.status})`;
+    } catch (_) {
+      return `API error (HTTP ${response.status})${body ? ': ' + body.slice(0, 200) : ''}`;
+    }
+  }
+
+  // Goi /ai/v1/chat/completions (chuan OpenAI). content = chuoi (dich) hoac
+  // mang [{type:'text'}, {type:'image_url'}] (OCR). Tu cho + thu lai khi gap
+  // 429/503 giong callGemini (nut Stop retry van dung duoc).
+  async function callCloudflare({ model, content, temperature, maxTokens, itemIndex }) {
+    const creds = getCfCreds();
+    if (!creds) throw new Error(t('missing_api_key'));
+    const url = `${CF_API_BASE}/${encodeURIComponent(creds.accountId)}/ai/v1/chat/completions`;
+    // Tat "suy nghi" cua model de khong ton quota + khong lam hong JSON
+    let extra = { chat_template_kwargs: { enable_thinking: false } };
+    let attempt = 0;
+    while (true) {
+      const response = await cfHttpFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${creds.token}` },
+        body: JSON.stringify({
+          model, temperature, max_tokens: maxTokens,
+          messages: [{ role: 'user', content }],
+          ...extra,
+        }),
+      });
+      usageStats.totalCalls++;
+      if (response.ok) usageStats.successCalls++; else usageStats.failedCalls++;
+      scheduleSaveConfig();
+
+      // Model khong nhan tham so tat suy nghi -> gui lai khong kem no
+      if (response.status === 400 && Object.keys(extra).length) {
+        const msg = await readCfError(response);
+        if (/chat_template_kwargs|enable_thinking|additional properties|unknown/i.test(msg)) { extra = {}; continue; }
+        throw new Error(msg);
+      }
+
+      if (response.status === 429 || response.status === 503) {
+        attempt++;
+        if (retryQueueCancelled) throw new Error('Retry queue stopped by user.');
+        if (attempt > MAX_429_RETRIES) throw new Error(await readCfError(response));
+        showToast(t('rate_limited', { seconds: RETRY_WAIT_MS / 1000 }), 'warning');
+        showRetryStopButton(itemIndex);
+        const cancelled = await new Promise((resolve) => {
+          const timer = setTimeout(() => resolve(false), RETRY_WAIT_MS);
+          activeRetry = { cancel: () => { clearTimeout(timer); resolve(true); } };
+        });
+        activeRetry = null;
+        hideRetryStopButton(itemIndex);
+        if (cancelled || retryQueueCancelled) throw new Error('Retry queue stopped by user.');
+        continue;
+      }
+
+      if (!response.ok) throw new Error(await readCfError(response));
+      const data = await response.json();
+      const msg = data.choices?.[0]?.message || {};
+      const text = typeof msg.content === 'string' ? msg.content : (msg.content || []).map(p => p.text || '').join('');
+      return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    }
+  }
+
+  // ---------- cat anh dai thanh lat (port tu bench slice.mjs) ----------
+  function cfLoadImage(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(t('could_not_read_file')));
+      img.src = dataUrl;
+    });
+  }
+
+  // gray: Uint8ClampedArray do sang, W x H. Tra ve [[y0, y1, overlapTop], ...]
+  function cfFindCuts(gray, W, H, chunkRatio = 1.6) {
+    const busy = new Float32Array(H);
+    for (let y = 0; y < H; y++) {
+      let g = 0;
+      const row = y * W;
+      for (let x = 1; x < W; x++) g += Math.abs(gray[row + x] - gray[row + x - 1]);
+      busy[y] = g / (W - 1);
+    }
+    const QUIET = 2.5;
+    const minBand = Math.max(20, Math.round(W * 0.035));
+    const target = Math.round(W * chunkRatio);
+    const OVERLAP = Math.max(150, Math.round(W * 0.35));
+    const minLast = Math.round(target * 0.5);
+    const cuts = [];
+    let y0 = 0, overlapTop = 0;
+    while (H - y0 > target * 1.4) {
+      const lo = y0 + Math.round(target * 0.5);
+      const hi = Math.min(H - minLast, y0 + Math.round(target * 2.0));
+      if (hi <= lo) break;
+      let best = null;
+      let y = lo;
+      while (y <= hi) {
+        if (busy[y] >= QUIET) { y++; continue; }
+        let e = y;
+        while (e + 1 <= hi && busy[e + 1] < QUIET) e++;
+        const len = e - y + 1;
+        if (len >= minBand) {
+          const mid = Math.round((y + e) / 2);
+          const score = Math.min(len, 3 * minBand) - Math.abs(mid - (y0 + target)) * 0.08;
+          if (!best || score > best.score) best = { mid, score };
+        }
+        y = e + 1;
+      }
+      let cut;
+      if (best) cut = best.mid;
+      else {
+        // Khong co khe trong: cat o hang it net ve nhat, 2 lat chong nhau
+        let bestAvg = Infinity;
+        cut = y0 + target;
+        for (let c = lo + 12; c <= hi - 12; c++) {
+          let s = 0;
+          for (let k = -12; k < 12; k++) s += busy[c + k];
+          if (s < bestAvg) { bestAvg = s; cut = c; }
+        }
+      }
+      cuts.push([y0, cut, overlapTop]);
+      if (best) { y0 = cut; overlapTop = 0; }
+      else { y0 = Math.max(y0 + 1, cut - OVERLAP); overlapTop = cut - y0; }
+    }
+    cuts.push([y0, H, overlapTop]);
+    return cuts;
+  }
+
+  async function cfPrepareChunks(dataUrl) {
+    const img = await cfLoadImage(dataUrl);
+    const W0 = img.naturalWidth, H0 = img.naturalHeight;
+    // Thu nho ve rong toi da 1200px (va khong vuot gioi han chieu cao canvas)
+    const scale = Math.min(1, CF_MAX_WIDTH / W0, 32000 / H0);
+    const W = Math.max(1, Math.round(W0 * scale)), H = Math.max(1, Math.round(H0 * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, W, H);
+
+    let cuts = [[0, H, 0]];
+    if (H / W > 2.0) {
+      const rgba = ctx.getImageData(0, 0, W, H).data;
+      const gray = new Uint8ClampedArray(W * H);
+      for (let i = 0, p = 0; i < gray.length; i++, p += 4) gray[i] = (rgba[p] * 299 + rgba[p + 1] * 587 + rgba[p + 2] * 114) / 1000;
+      cuts = cfFindCuts(gray, W, H);
+    }
+    const out = document.createElement('canvas');
+    const octx = out.getContext('2d');
+    return cuts.map(([y0, y1, overlapTop]) => {
+      out.width = W; out.height = y1 - y0;
+      octx.fillStyle = '#fff';
+      octx.fillRect(0, 0, W, y1 - y0);
+      octx.drawImage(canvas, 0, y0, W, y1 - y0, 0, 0, W, y1 - y0);
+      return { y0, y1, overlapTop, dataUrl: out.toDataURL('image/jpeg', 0.9) };
+    });
+  }
+
+  // ---------- prompt OCR tra JSON (port tu bench json-prompt.mjs) ----------
+  const CF_LANG_DESC = {
+    ko: 'Korean comic (manhwa/webtoon). Extract the original Korean text exactly.',
+    zh: 'Chinese comic (manhua). Extract the original Chinese text exactly; do not convert between Simplified and Traditional.',
+    en: 'English-language comic. Extract the original English text exactly.',
+    ja: 'Japanese manga. Extract the original Japanese text exactly. Text is often written VERTICALLY (top-to-bottom, columns from right to left) - read each column top to bottom, starting from the rightmost column. If kanji has small furigana beside it, output only the main text and ignore the furigana.',
+    'manga-en': 'English-lettered manga. Extract the original English text exactly.',
+  };
+
+  function buildCfJsonOcrPrompt(sourceLang, skipSfx) {
+    return `You are an OCR engine for comics. This image is a page (or part of a page) from a ${CF_LANG_DESC[sourceLang] || CF_LANG_DESC.en}
+
+Find EVERY text element on the image and return it as JSON. Do NOT translate.
+
+Rules:
+1. One element = one speech bubble, one caption/narration box, one piece of free-floating handwritten text, or one sound effect. Text that wraps onto several lines inside the SAME bubble is ONE element: join the wrapped fragments into a single string (Korean/English: join with a space; Japanese/Chinese: join with no space).
+2. Two different bubbles are two different elements, even if they touch or are joined like a double bubble.
+3. "type" must be one of: "bubble" (speech/thought bubble), "caption" (rectangular narration box or on-screen window/label), "aside" (small handwritten text drawn on the art with no outline), "sfx" (stylized sound-effect lettering drawn on the art).
+4. "box" is the bounding box of the element as [x1, y1, x2, y2], using coordinates normalized to 0-1000 (0,0 = top-left corner of the image, 1000,1000 = bottom-right). x is horizontal, y is vertical.
+5. Preserve punctuation (…, ?!, 「」, —). Skip elements that have no legible text; never write placeholders like "(blank)".
+6. The order of elements in the array does not matter. If the image has no text at all, return {"items":[]}.${skipSfx ? '\n7. You may omit "sfx" elements entirely.' : ''}
+
+Return ONLY this JSON, with no markdown fence and no explanation:
+{"items":[{"text":"...","type":"bubble","box":[x1,y1,x2,y2]}]}`;
+  }
+
+  // Model hay xuong dong THAT ben trong chuoi "text" -> JSON khong hop le. Doi thanh \n.
+  function cfEscapeNewlinesInStrings(s) {
+    let out = '', inStr = false, esc = false;
+    for (const ch of s) {
+      if (inStr) {
+        if (esc) { esc = false; out += ch; continue; }
+        if (ch === '\\') { esc = true; out += ch; continue; }
+        if (ch === '"') { inStr = false; out += ch; continue; }
+        if (ch === '\n') { out += '\\n'; continue; }
+        if (ch === '\r') continue;
+        if (ch === '\t') { out += ' '; continue; }
+        out += ch;
+      } else {
+        if (ch === '"') inStr = true;
+        out += ch;
+      }
+    }
+    return out;
+  }
+
+  function parseCfJsonItems(raw) {
+    let s = String(raw || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```(?:json)?/gi, '').trim();
+    // Model hay quen dau phay: "abc" "type" / } { / ] "box" -> tu them vao
+    s = s
+      // Thieu ngoac kep o key: {text": / {text: / ,type: -> {"text":
+      .replace(/([{,]\s*)"?(text|type|box)"?\s*:(?=\s*["\[])/g, '$1"$2":')
+    ;
+    s = cfEscapeNewlinesInStrings(s)
+      .replace(/"\s*\n?\s*"(text|type|box)"\s*:/g, '", "$1":')
+      .replace(/\]\s*\n?\s*"(text|type|box)"\s*:/g, '], "$1":')
+      .replace(/\}\s*\n?\s*\{/g, '}, {')
+      .replace(/,\s*([}\]])/g, '$1');
+    const tryParse = (str) => { try { return JSON.parse(str); } catch (_) { return undefined; } };
+    let data = tryParse(s);
+    if (data === undefined) {
+      const o1 = s.indexOf('{'), o2 = s.lastIndexOf('}');
+      const a1 = s.indexOf('['), a2 = s.lastIndexOf(']');
+      const obj = () => (o1 !== -1 && o2 > o1 ? tryParse(s.slice(o1, o2 + 1)) : undefined);
+      const arr = () => (a1 !== -1 && a2 > a1 ? tryParse(s.slice(a1, a2 + 1)) : undefined);
+      data = a1 !== -1 && (o1 === -1 || a1 < o1) ? (arr() ?? obj()) : (obj() ?? arr());
+    }
+    if (data === undefined) {
+      // JSON bi cat ngang: nhat tung item con nguyen ven
+      const found = [];
+      const re = /\{[^{}]*?"text"\s*:\s*"(?:[^"\\]|\\.)*"[^{}]*?\}/g;
+      let m;
+      while ((m = re.exec(s))) { const it = tryParse(m[0]); if (it) found.push(it); }
+      if (!found.length) return null;
+      data = found;
+    }
+    const arr = Array.isArray(data) ? data : (data.items || data.elements || data.bubbles || data.texts || []);
+    return arr
+      .filter(it => it && typeof it.text === 'string' && it.text.trim())
+      .map(it => ({ text: it.text.replace(/\s*\n\s*/g, ' ').trim(), type: String(it.type || 'bubble').toLowerCase(), box: it.box ?? it.bbox ?? it.bbox_2d ?? null }));
+  }
+
+  // ---------- sap thu tu doc bang code (port tu bench order.mjs) ----------
+  function cfNormalizeBox(box) {
+    if (!box) return null;
+    let b;
+    if (Array.isArray(box) && box.length === 4) b = box.map(Number);
+    else if (typeof box === 'object' && 'x1' in box) b = [box.x1, box.y1, box.x2, box.y2].map(Number);
+    if (!b || b.some(v => !Number.isFinite(v))) return null;
+    return [Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.max(b[0], b[2]), Math.max(b[1], b[3])];
+  }
+
+  function cfSortReadingOrder(items, contentType) {
+    const withBox = [], noBox = [];
+    items.forEach(it => { const b = cfNormalizeBox(it.box); if (b) withBox.push({ ...it, box: b }); else noBox.push(it); });
+    const parent = withBox.map((_, i) => i);
+    const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    for (let a = 0; a < withBox.length; a++) {
+      for (let b = a + 1; b < withBox.length; b++) {
+        const A = withBox[a].box, B = withBox[b].box;
+        const overlap = Math.min(A[3], B[3]) - Math.max(A[1], B[1]);
+        const minH = Math.max(1, Math.min(A[3] - A[1], B[3] - B[1]));
+        if (overlap / minH >= 0.1) parent[find(a)] = find(b);
+      }
+    }
+    const rows = new Map();
+    withBox.forEach((it, i) => { const r = find(i); if (!rows.has(r)) rows.set(r, []); rows.get(r).push(it); });
+    const rtl = contentType === 'manga';
+    const cx = (b) => (b[0] + b[2]) / 2;
+    const out = [];
+    [...rows.values()]
+      .map(row => ({ top: Math.min(...row.map(it => it.box[1])), row }))
+      .sort((a, b) => a.top - b.top)
+      .forEach(({ row }) => {
+        row.sort((a, b) => { const d = rtl ? cx(b.box) - cx(a.box) : cx(a.box) - cx(b.box); return d !== 0 ? d : a.box[1] - b.box[1]; });
+        out.push(...row);
+      });
+    return out.concat(noBox);
+  }
+
+  // ---------- so sanh chu (bo dong trung o cho 2 lat chong nhau) ----------
+  function cfNorm(s) {
+    return String(s || '').normalize('NFKC').toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '').replace(/[ㅡ―—]/g, '');
+  }
+  function cfSim(a, b) {
+    const A = Array.from(cfNorm(a)), B = Array.from(cfNorm(b));
+    const L = Math.max(A.length, B.length);
+    if (!L) return 1;
+    let prev = Array.from({ length: B.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= A.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= B.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (A[i - 1] === B[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return 1 - prev[B.length] / L;
+  }
+
+  async function cfRunOCR(imageData, itemIndex) {
+    if (!getCfCreds()) throw new Error(t('missing_api_key'));
+    const chunks = await cfPrepareChunks(imageData.dataUrl);
+    const skipSfx = skipSfxToggle.checked;
+    const prompt = buildCfJsonOcrPrompt(sourceLangSelect.value, skipSfx);
+    const lines = [];
+    let okChunks = 0;
+    for (let c = 0; c < chunks.length; c++) {
+      const ch = chunks[c];
+      const raw = await callCloudflare({
+        model: getSelectedModel(),
+        content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: ch.dataUrl } }],
+        temperature: 0.1, maxTokens: CF_OCR_MAX_TOKENS, itemIndex,
+      });
+      let items = parseCfJsonItems(raw);
+      if (items === null) { logError(`Cloudflare OCR: chunk ${c + 1}/${chunks.length} of image ${itemIndex + 1} returned no JSON`); continue; }
+      okChunks++;
+      if (skipSfx) items = items.filter(it => it.type !== 'sfx');
+      // Model hay lap lai cung 1 bong -> chi giu lan dau (bong chi co dau cau thi giu nguyen)
+      const seen = new Set();
+      items = items.filter(it => { const k = cfNorm(it.text); if (!k) return true; if (seen.has(k)) return false; seen.add(k); return true; });
+      items = cfSortReadingOrder(items, currentContentType);
+      let newLines = items.map(it => it.text);
+      // Lat nay chong len lat truoc (cat ep) -> bo cac dong dau da doc o lat truoc
+      if (ch.overlapTop && lines.length) {
+        const tail = lines.slice(-4);
+        let k = 0;
+        while (k < newLines.length && k < 4 && tail.some(tl => cfSim(tl, newLines[k]) >= 0.8)) k++;
+        newLines = newLines.slice(k);
+      }
+      lines.push(...newLines);
+      if (c < chunks.length - 1) await sleep(300);
+    }
+    if (!okChunks) throw new Error(t('cf_bad_json'));
+    const text = stripEmptyLines(lines.join('\n').replace(/[ \t]{2,}/g, ' ').trim());
+    if (!text) throw new Error(t('cannot_extract'));
+    return text;
+  }
+
+  // ---------- dich text-to-text (khong gui anh -> rat re quota) ----------
+  const CF_TRANSLATE_RULES = (targetName) => `
+- If a line is a standalone sound effect (not a full sentence), translate it BRIEFLY as an equivalent sound effect in ${targetName}.
+- The source may be in ALL CAPS only because of the comic font: use normal sentence case in ${targetName}.
+- The wave dash "〜"/"～" means a drawn-out, playful sound, NOT hesitation: never replace it with "...".
+- Never write placeholder notes such as "(blank)", "(bỏ trống)", "N/A".`;
+
+  function parseCfNumbered(text, n) {
+    const clean = String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```[a-z]*/gi, '');
+    const map = new Map();
+    for (const raw of clean.split('\n')) {
+      const m = raw.match(/^\s*[\[(]?(\d{1,3})[\])\.:：]\s*(.*)$/);
+      if (!m) continue;
+      const k = Number(m[1]);
+      if (k >= 1 && k <= n && !map.has(k)) map.set(k, m[2].trim());
+    }
+    if (map.size === 0) {
+      const plain = clean.split('\n').map(l => l.trim()).filter(Boolean);
+      while (plain.length > n && /[:：]$/.test(plain[0])) plain.shift();
+      return Array.from({ length: n }, (_, i) => plain[i] || '');
+    }
+    return Array.from({ length: n }, (_, i) => map.get(i + 1) ?? '');
+  }
+
+  async function cfTranslateLines({ prompt, n, fallback, itemIndex }) {
+    let out = null;
+    for (let tryNo = 0; tryNo < 2; tryNo++) {
+      const raw = await callCloudflare({ model: getSelectedModel(), content: prompt, temperature: 0.5, maxTokens: CF_TRANSLATE_MAX_TOKENS, itemIndex });
+      out = parseCfNumbered(raw, n);
+      if (out.every(l => l)) break; // du dong -> xong; thieu dong -> thu lai 1 lan
+    }
+    // Van thieu dong: giu dong goc/ban cu o dung vi tri de khong lech dong
+    return out.map((l, i) => l || fallback[i] || '');
+  }
+
+  async function cfRunTranslate(imageData, itemIndex) {
+    const src = String(imageData.ocrResult || '').split('\n').map(l => l.trim()).filter(Boolean);
+    if (!src.length) throw new Error(t('run_ocr_first'));
+    const S = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
+    const T = LANG_NAMES[targetLangSelect.value] || targetLangSelect.value;
+    // Anh truoc (neu co OCR) lam ngu canh de dich xung ho cho dung mach truyen
+    const prev = String(uploadedImages[itemIndex - 1]?.ocrResult || '').split('\n').map(l => l.trim()).filter(Boolean).slice(-12);
+    const prompt = `You are a professional comic translator. Translate ${S} comic dialogue into natural ${T}.
+${prev.length ? `\nPrevious page, for story context only (do NOT translate it):\n${prev.map(l => `- ${l}`).join('\n')}\n` : ''}
+Lines to translate (each line is one speech bubble):
+${src.map((l, i) => `[${i + 1}] ${l}`).join('\n')}
+
+Rules:
+1. Output exactly ${src.length} lines, in the same order, each starting with its number in brackets: [1] ..., [2] ...
+2. One source line = one output line. Never merge, split, skip or add lines.
+3. Write natural, spoken ${T} like a professionally translated webtoon, not word-for-word.
+4. Choose ${T} pronouns and forms of address that fit the speakers' relationship, and keep them consistent.
+5. Keep the emotion and punctuation style (…, ?!, !!!).${CF_TRANSLATE_RULES(T)}
+6. Output ONLY the numbered ${T} lines. No notes, no original text.`;
+    const lines = await cfTranslateLines({ prompt, n: src.length, fallback: src, itemIndex });
+    const text = lines.join('\n').trim();
+    if (!text) throw new Error(t('translation_empty'));
+    return text;
+  }
+
+  async function cfRunRefineTranslate(imageData, itemIndex, userInstruction) {
+    if (!imageData.translationResult) throw new Error(t('no_translation_to_refine'));
+    const prevTr = String(imageData.translationResult).split('\n').map(l => l.trim()).filter(Boolean);
+    const src = String(imageData.ocrResult || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const S = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
+    const T = LANG_NAMES[targetLangSelect.value] || targetLangSelect.value;
+    const n = prevTr.length;
+    const prompt = `You are the editor of ${T} comic translations. Improve the existing ${T} translation below: fix mistranslations, make each line sound like natural spoken ${T} from a professionally translated webtoon, and keep pronouns / forms of address consistent.
+${userInstruction ? `\nADDITIONAL USER INSTRUCTION (takes priority over general style choices):\n${userInstruction}\n` : ''}
+${prevTr.map((l, i) => `[${i + 1}]${src[i] ? ` ${S}: ${src[i]}\n    ` : ' '}Current: ${l}`).join('\n')}
+
+Rules:
+1. Output exactly ${n} lines, numbered [1] to [${n}], same order. Never merge, split, skip or add lines.${CF_TRANSLATE_RULES(T)}
+2. Output ONLY the improved ${T} lines. No notes.`;
+    const lines = await cfTranslateLines({ prompt, n, fallback: prevTr, itemIndex });
+    const text = lines.join('\n').trim();
+    if (!text) throw new Error(t('refine_translate_empty'));
+    return text;
+  }
+  // ---------- het phan Cloudflare ----------
 
   // ---------- UI: manga item ----------
   function createMangaItem(imageData, index) {

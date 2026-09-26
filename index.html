@@ -12,7 +12,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com; img-src 'self' data: https://www.google-analytics.com https://www.google.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://generativelanguage.googleapis.com https://api.cloudflare.com https://*.workers.dev https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com; img-src 'self' data: https://www.google-analytics.com https://www.google.com;">
     <title>VisionBox</title>
     <link rel="icon" href="icon.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
@@ -42,7 +42,11 @@
         <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
         <option value="__custom__" data-i18n="model_other">Other model...</option>
       </select>
-      <input type="text" id="model-custom-input" placeholder="custom-model-name" style="display:none" />
+      <!-- "Other model...": o nhap thay the ngay tai cho cua dropdown, khong mo them o moi -->
+      <div class="input-with-btn" id="model-custom-wrap" style="display:none">
+        <input type="text" id="model-custom-input" data-i18n="custom_model_placeholder" data-i18n-placeholder placeholder="custom-model-name" autocomplete="off" spellcheck="false" />
+        <button type="button" id="model-back-btn" class="icon-btn" title="Back to model list" data-i18n="model_back_title" data-i18n-title><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span></button>
+      </div>
     </div>
 
     <div class="field">
@@ -50,7 +54,16 @@
       <div class="input-with-btn">
         <input type="password" id="api-key-input" data-i18n="api_key_placeholder" data-i18n-placeholder placeholder="Enter API key from Google AI Studio" />
         <button id="toggle-key-btn" class="icon-btn" title="Show/hide key"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></span></button>
-        <button type="button" id="get-key-btn" class="icon-btn" title="Get an API key from Google AI Studio"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg></span> <span data-i18n="get_key">Get key</span></button>
+        <button type="button" id="get-key-btn" class="icon-btn" title="Get an API key"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg></span> <span data-i18n="get_key">Get key</span></button>
+      </div>
+    </div>
+
+    <!-- Chi hien khi Server = Cloudflare (Cloudflare can ca Account ID lan API Token) -->
+    <div class="field" id="cf-account-field" style="display:none">
+      <label for="cf-account-input" data-i18n="cf_account_label">Cloudflare Account ID</label>
+      <div class="input-with-btn" id="cf-account-wrap">
+        <input type="password" id="cf-account-input" data-i18n="cf_account_placeholder" data-i18n-placeholder placeholder="Account ID" autocomplete="off" spellcheck="false" />
+        <button type="button" id="toggle-cf-account-btn" class="icon-btn" title="Show/hide Account ID"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></span></button>
       </div>
     </div>
   </div>
@@ -124,6 +137,14 @@
             </button>
           </div>
           <div class="field settings-field">
+            <label for="server-select" data-i18n="server_label">Server</label>
+            <select id="server-select">
+              <option value="gemini" data-i18n="server_gemini">Gemini</option>
+              <option value="cloudflare" data-i18n="server_cloudflare">Cloudflare</option>
+            </select>
+          </div>
+
+          <div class="field settings-field">
             <label for="theme-select" data-i18n="theme_label">Theme</label>
             <select id="theme-select">
               <option value="dark" data-i18n="dark_mode">Dark mode</option>
@@ -152,7 +173,7 @@
           <label class="toggle-field settings-toggle" for="auto-switch-model-toggle">
             <input type="checkbox" id="auto-switch-model-toggle" />
             <span class="toggle-switch"></span>
-            <span class="toggle-label" data-i18n="auto_switch_model_label">Auto-switch model when overloaded</span>
+            <span class="toggle-label" data-i18n="auto_switch_model_label">Auto switch model</span>
           </label>
 
           <!-- Các cài đặt khác sẽ thêm sau -->
