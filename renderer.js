@@ -2374,7 +2374,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   // nen di qua Worker trung chuyen (thu muc cloudflare-worker/). Dan URL Worker
   // cua ban vao day, vd 'https://visionbox-cf-proxy.<ten-ban>.workers.dev'.
   // Ban app Tauri KHONG dung toi dong nay (goi thang qua plugin HTTP).
-  const CF_WEB_PROXY_URL = (window.VISIONBOX_CF_PROXY || 'https://visionbox-cf-proxy.YOUR-SUBDOMAIN.workers.dev').replace(/\/+$/, '');
+  const CF_WEB_PROXY_URL = (window.VISIONBOX_CF_PROXY || 'https://visionbox-cf-proxy.dantruong37990.workers.dev').replace(/\/+$/, '');
   const CF_OCR_MAX_TOKENS = 8192;
   const CF_TRANSLATE_MAX_TOKENS = 4096;
   const CF_MAX_WIDTH = 1200;
@@ -2394,7 +2394,7 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
     const tauriFetch = window.__TAURI__?.http?.fetch;
     if (tauriFetch) return tauriFetch(url, init);
     // Web: doi api.cloudflare.com -> Worker trung chuyen (cung duong dan)
-    if (CF_WEB_PROXY_URL.includes('YOUR-SUBDOMAIN')) throw new Error(t('cf_http_missing'));
+    if (!CF_WEB_PROXY_URL) throw new Error(t('cf_http_missing'));
     try {
       return await fetch(url.replace(CF_API_ORIGIN, CF_WEB_PROXY_URL), init);
     } catch (err) {
