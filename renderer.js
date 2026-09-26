@@ -1,27 +1,55 @@
 (() => {
   (function setupWebFallbackAPIs() {
     const WEB_CONFIG_KEY = 'visionbox_config_cache_v1';
+    // Key API + Account ID + server duoc luu RIENG o 1 muc nho, de khong bao
+    // gio bi mat khi config chinh qua lon (vuot quota localStorage vi lich su).
+    const WEB_KEYS_KEY = 'visionbox_keys_v1';
+    const KEY_FIELDS = ['apiKey', 'cfApiToken', 'cfAccountId', 'server'];
 
     if (!window.appConfig || typeof window.appConfig.get !== 'function') {
+      const readJson = (k) => {
+        try { const raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : null; }
+        catch (err) { console.warn('[web-fallback] doc ' + k + ' loi:', err); return null; }
+      };
+      const saveKeys = (src) => {
+        try {
+          const keys = {};
+          KEY_FIELDS.forEach(f => { if (typeof src[f] === 'string') keys[f] = src[f]; });
+          localStorage.setItem(WEB_KEYS_KEY, JSON.stringify(keys));
+          return true;
+        } catch (err) { console.warn('[web-fallback] luu key loi:', err); return false; }
+      };
+      // Goi ngay khi nguoi dung go/dan key (khong doi debounce) - xem renderer
+      window.__vbWebSaveKeys = saveKeys;
+
       window.appConfig = {
         async get() {
-          try {
-            const raw = localStorage.getItem(WEB_CONFIG_KEY);
-            return raw ? JSON.parse(raw) : {};
-          } catch (err) {
-            console.warn('[web-fallback] appConfig.get loi, tra ve config rong:', err);
-            return {};
-          }
+          const cfg = readJson(WEB_CONFIG_KEY) || {};
+          const keys = readJson(WEB_KEYS_KEY) || {};
+          // Muc key rieng luon moi nhat -> uu tien
+          KEY_FIELDS.forEach(f => { if (typeof keys[f] === 'string') cfg[f] = keys[f]; });
+          return cfg;
         },
         async set(cfg) {
+          saveKeys(cfg);
           try {
             localStorage.setItem(WEB_CONFIG_KEY, JSON.stringify(cfg));
             return true;
           } catch (err) {
-            // Thuong gap nhat: vuot quota localStorage (~5-10MB) do cache
-            // qua nhieu anh/lich su. Khong lam vo app, chi bao loi ra console.
-            console.warn('[web-fallback] appConfig.set loi (co the do vuot dung luong luu tru cua trinh duyet):', err);
-            return false;
+            // Vuot quota localStorage (~5MB) do lich su OCR/dich qua nhieu:
+            // bo bot lich su version + log loi roi luu lai, de cai dat van con.
+            try {
+              const slim = { ...cfg, errorLogs: [] };
+              if (cfg.project && Array.isArray(cfg.project.images)) {
+                slim.project = { ...cfg.project, images: cfg.project.images.map(img => ({ ...img, ocrHistory: [], translationHistory: [] })) };
+              }
+              localStorage.setItem(WEB_CONFIG_KEY, JSON.stringify(slim));
+              console.warn('[web-fallback] config qua lon, da luu ban rut gon (bo lich su version).');
+              return true;
+            } catch (err2) {
+              console.warn('[web-fallback] appConfig.set loi (vuot dung luong luu tru cua trinh duyet):', err2);
+              return false;
+            }
           }
         }
       };
@@ -608,6 +636,7 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
   function scheduleSaveConfig() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
+      saveTimeout = null;
       window.appConfig.set(buildConfigPayload());
     }, 600);
   }
@@ -679,10 +708,40 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
   });
   apiKeyInput.addEventListener('input', () => { keyByServer[currentServer] = apiKeyInput.value.trim(); });
   cfAccountInput.addEventListener('input', scheduleSaveConfig);
+
+  // Ban web: luu key/Account ID NGAY khi go hoac dan (khong doi 600ms), de
+  // F5 hay dong tab ngay sau khi dan key cung khong bi mat.
+  function saveKeysNowOnWeb() {
+    if (typeof window.__vbWebSaveKeys !== 'function') return;
+    syncServerStateFromUI();
+    window.__vbWebSaveKeys({
+      apiKey: keyByServer.gemini || '',
+      cfApiToken: keyByServer.cloudflare || '',
+      cfAccountId: cfAccountInput.value.trim(),
+      server: currentServer,
+    });
+  }
+  [apiKeyInput, cfAccountInput].forEach(el => {
+    el.addEventListener('input', saveKeysNowOnWeb);
+    el.addEventListener('change', saveKeysNowOnWeb);
+  });
+
+  // Dong tab / tai lai trang / chuyen app tren dien thoai: luu ngay phan dang cho
+  function flushPendingSave() {
+    if (!saveTimeout) return;
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+    try { window.appConfig.set(buildConfigPayload()); } catch (_) {}
+  }
+  window.addEventListener('pagehide', flushPendingSave);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPendingSave();
+  });
   serverSelect.addEventListener('change', () => {
     syncServerStateFromUI();
     currentServer = serverSelect.value === 'cloudflare' ? 'cloudflare' : 'gemini';
     applyServerUI();
+    saveKeysNowOnWeb();
     scheduleSaveConfig();
   });
 
