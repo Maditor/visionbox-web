@@ -2376,6 +2376,8 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   // Ban app Tauri KHONG dung toi dong nay (goi thang qua plugin HTTP).
   const CF_WEB_PROXY_URL = (window.VISIONBOX_CF_PROXY || 'https://visionbox-cf-proxy.dantruong37990.workers.dev').replace(/\/+$/, '');
   const CF_OCR_MAX_TOKENS = 8192;
+  // So lat anh gui len Cloudflare cung luc khi OCR (gioi han free ~300 lan goi/phut, 3 la an toan)
+  const CF_OCR_CONCURRENCY = 3;
   const CF_TRANSLATE_MAX_TOKENS = 4096;
   const CF_MAX_WIDTH = 1200;
 
@@ -2570,6 +2572,30 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
     'manga-en': 'English-lettered manga. Extract the original English text exactly.',
   };
 
+  // Nguon tieng Anh: bo chu Han/Nhat/Trung con sot trong tranh (SFX, bien hieu chua dich)
+  const CF_LATIN_ONLY = new Set(['en', 'manga-en']);
+  const CF_CJK_RE = /[\u1100-\u11ff\u3040-\u30ff\u3130-\u318f\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uff66-\uff9f]/g;
+  function cfIsMostlyForeign(text) {
+    const letters = String(text).replace(/[\s\d\p{P}\p{S}]/gu, '');
+    if (!letters) return false;
+    const cjk = (letters.match(CF_CJK_RE) || []).length;
+    return cjk / letters.length > 0.3;
+  }
+
+  // Chay fn cho tung phan tu, toi da `limit` viec cung luc, ket qua giu dung thu tu
+  async function cfMapLimit(list, limit, fn) {
+    const results = new Array(list.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < list.length) {
+        const i = next++;
+        results[i] = await fn(list[i], i);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(limit, list.length) }, worker));
+    return results;
+  }
+
   function buildCfJsonOcrPrompt(sourceLang, skipSfx) {
     return `You are an OCR engine for comics. This image is a page (or part of a page) from a ${CF_LANG_DESC[sourceLang] || CF_LANG_DESC.en}
 
@@ -2581,7 +2607,7 @@ Rules:
 3. "type" must be one of: "bubble" (speech/thought bubble), "caption" (rectangular narration box or on-screen window/label), "aside" (small handwritten text drawn on the art with no outline), "sfx" (stylized sound-effect lettering drawn on the art).
 4. "box" is the bounding box of the element as [x1, y1, x2, y2], using coordinates normalized to 0-1000 (0,0 = top-left corner of the image, 1000,1000 = bottom-right). x is horizontal, y is vertical.
 5. Preserve punctuation (…, ?!, 「」, —). Skip elements that have no legible text; never write placeholders like "(blank)".
-6. The order of elements in the array does not matter. If the image has no text at all, return {"items":[]}.${skipSfx ? '\n7. You may omit "sfx" elements entirely.' : ''}
+6. The order of elements in the array does not matter. If the image has no text at all, return {"items":[]}.${CF_LATIN_ONLY.has(sourceLang) ? '\n7. Extract ONLY English text. Ignore any text written in Korean, Japanese or Chinese characters (for example untranslated sound effects, signs or watermarks left in the artwork) - do not include it and do not translate it.' : ''}${skipSfx ? '\n8. You may omit "sfx" elements entirely.' : ''}
 
 Return ONLY this JSON, with no markdown fence and no explanation:
 {"items":[{"text":"...","type":"bubble","box":[x1,y1,x2,y2]}]}`;
@@ -2702,20 +2728,31 @@ Return ONLY this JSON, with no markdown fence and no explanation:
     if (!getCfCreds()) throw new Error(t('missing_api_key'));
     const chunks = await cfPrepareChunks(imageData.dataUrl);
     const skipSfx = skipSfxToggle.checked;
-    const prompt = buildCfJsonOcrPrompt(sourceLangSelect.value, skipSfx);
+    const sourceLang = sourceLangSelect.value;
+    const prompt = buildCfJsonOcrPrompt(sourceLang, skipSfx);
+    const model = getSelectedModel();
+    // Gui nhieu lat CUNG LUC (anh webtoon dai ~8 lat) -> nhanh gap ~3 lan.
+    // Ket qua van ghep theo dung thu tu lat tu tren xuong.
+    const raws = await cfMapLimit(chunks, CF_OCR_CONCURRENCY, (ch) => callCloudflare({
+      model,
+      content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: ch.dataUrl } }],
+      temperature: 0.1, maxTokens: CF_OCR_MAX_TOKENS, itemIndex,
+    }));
     const lines = [];
     let okChunks = 0;
     for (let c = 0; c < chunks.length; c++) {
       const ch = chunks[c];
-      const raw = await callCloudflare({
-        model: getSelectedModel(),
-        content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: ch.dataUrl } }],
-        temperature: 0.1, maxTokens: CF_OCR_MAX_TOKENS, itemIndex,
-      });
+      const raw = raws[c];
       let items = parseCfJsonItems(raw);
       if (items === null) { logError(`Cloudflare OCR: chunk ${c + 1}/${chunks.length} of image ${itemIndex + 1} returned no JSON`); continue; }
       okChunks++;
       if (skipSfx) items = items.filter(it => it.type !== 'sfx');
+      if (CF_LATIN_ONLY.has(sourceLang)) {
+        items = items
+          .filter(it => !cfIsMostlyForeign(it.text))
+          .map(it => ({ ...it, text: it.text.replace(CF_CJK_RE, '').replace(/\s{2,}/g, ' ').trim() }))
+          .filter(it => it.text);
+      }
       // Model hay lap lai cung 1 bong -> chi giu lan dau (bong chi co dau cau thi giu nguyen)
       const seen = new Set();
       items = items.filter(it => { const k = cfNorm(it.text); if (!k) return true; if (seen.has(k)) return false; seen.add(k); return true; });
@@ -2729,7 +2766,6 @@ Return ONLY this JSON, with no markdown fence and no explanation:
         newLines = newLines.slice(k);
       }
       lines.push(...newLines);
-      if (c < chunks.length - 1) await sleep(300);
     }
     if (!okChunks) throw new Error(t('cf_bad_json'));
     const text = stripEmptyLines(lines.join('\n').replace(/[ \t]{2,}/g, ' ').trim());
