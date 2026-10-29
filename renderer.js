@@ -226,7 +226,8 @@
   ];
   const GET_KEY_URL = {
     gemini: 'https://aistudio.google.com/api-keys',
-    cloudflare: 'https://dash.cloudflare.com/profile/api-tokens',
+    // Trang Workers AI: nut "Use REST API" lay duoc ca Account ID + Token dung loai
+    cloudflare: 'https://dash.cloudflare.com/?to=/:account/ai/workers-ai',
   };
   let currentServer = 'gemini';
   const keyByServer = { gemini: '', cloudflare: '' };
@@ -711,8 +712,17 @@ const isAppShortcut = allowedAppShortcuts.some(s =>
 
   // Ban web: luu key/Account ID NGAY khi go hoac dan (khong doi 600ms), de
   // F5 hay dong tab ngay sau khi dan key cung khong bi mat.
+  let keySaveTimer = null;
   function saveKeysNowOnWeb() {
-    if (typeof window.__vbWebSaveKeys !== 'function') return;
+    if (typeof window.__vbWebSaveKeys !== 'function') {
+      // Ban app (exe): ghi file config gan nhu ngay (150ms, gop cac phim go lien nhau)
+      clearTimeout(keySaveTimer);
+      keySaveTimer = setTimeout(() => {
+        clearTimeout(saveTimeout); saveTimeout = null;
+        try { window.appConfig.set(buildConfigPayload()); } catch (_) {}
+      }, 150);
+      return;
+    }
     syncServerStateFromUI();
     window.__vbWebSaveKeys({
       apiKey: keyByServer.gemini || '',
@@ -2315,9 +2325,8 @@ Return ONLY the refined translation, one line per bubble, in the same order as a
   async function runRefineOcr(imageData, itemIndex) {
     if (currentServer === 'cloudflare') {
       if (!imageData.ocrResult) throw new Error(t('no_ocr_to_refine'));
-      // Cloudflare OCR da tu sap thu tu + tach bong bang code, nen "Refine"
-      // = quet lai tu dau bang cung quy trinh (khong co buoc "doi chieu").
-      return cfRunOCR(imageData, itemIndex);
+      // Quet lai anh + doi chieu ban cu/ban moi (chi gui chu, rat re quota)
+      return cfRunRefineOcr(imageData, itemIndex);
     }
     const apiKey = getApiKey();
     if (!apiKey) throw new Error(t('missing_api_key'));
@@ -2831,6 +2840,61 @@ Rules:
     const text = lines.join('\n').trim();
     if (!text) throw new Error(t('translation_empty'));
     return text;
+  }
+
+  // ---------- Refine OCR: quet lai + doi chieu voi ban dang co ----------
+  // Buoc 1: quet lai anh bang dung quy trinh OCR (ban B).
+  // Buoc 2: gui CHU cua ban dang co (A, co the nguoi dung da sua tay) va ban B
+  //         cho model gop thanh ban tot nhat: sua chu sai, them bong bi sot,
+  //         giu cho nguoi dung da sua tay. Buoc nay khong gui anh -> rat re.
+  function parseCfLines(text) {
+    const clean = String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```[a-z]*/gi, '');
+    const rows = clean.split('\n').map(l => l.trim()).filter(Boolean);
+    // Chi nhan cac dong co danh so [1] ... (dung dinh dang da yeu cau);
+    // model tra loi lan man / tu choi -> mang rong -> dung ban quet moi
+    return rows
+      .map(l => l.match(/^[\[(]?(\d{1,3})[\])\.:：]\s*(.*)$/))
+      .filter(Boolean)
+      .map(m => m[2].trim())
+      .filter(Boolean);
+  }
+
+  async function cfRunRefineOcr(imageData, itemIndex) {
+    const oldLines = String(imageData.ocrResult || '').split('\n').map(l => l.trim()).filter(Boolean);
+    if (!oldLines.length) throw new Error(t('no_ocr_to_refine'));
+    const fresh = await cfRunOCR(imageData, itemIndex);
+    const newLines = fresh.split('\n').map(l => l.trim()).filter(Boolean);
+    // Hai ban giong het nhau -> khong can goi them
+    if (oldLines.join('\n') === newLines.join('\n')) return fresh;
+    const L = LANG_NAMES[sourceLangSelect.value] || sourceLangSelect.value;
+    const prompt = `You are proofreading the OCR text of ONE ${L} comic image. You have two OCR results of the SAME image:
+
+A = current text (the user may have corrected some lines by hand):
+${oldLines.map((l, i) => `A${i + 1}. ${l}`).join('\n')}
+
+B = a new, independent scan (its line order follows the reading order of the page):
+${newLines.map((l, i) => `B${i + 1}. ${l}`).join('\n')}
+
+Merge them into the single best version:
+1. Follow the line order of B. Each line = one speech bubble / caption.
+2. A line that appears in both A and B (same or nearly the same): if they differ, keep the version that is correct, natural ${L}. If both look plausible, keep A's version (it may be a manual correction).
+3. A line that is only in B (missed by A): add it at its position.
+4. A line that is only in A: keep it at the most sensible position (the user may have added it).
+5. Never output the same bubble twice. Do NOT translate. Do not add anything that is not in A or B.
+
+Output ONLY the final lines, each starting with its number: [1] ..., [2] ... No notes.`;
+    try {
+      const raw = await callCloudflare({ model: getSelectedModel(), content: prompt, temperature: 0.1, maxTokens: CF_TRANSLATE_MAX_TOKENS, itemIndex });
+      const merged = parseCfLines(raw);
+      // Ket qua bat thuong (rong / mat qua nhieu dong) -> dung ban quet moi
+      const minLen = Math.ceil(Math.max(oldLines.length, newLines.length) * 0.6);
+      if (merged.length && merged.length >= minLen) return stripEmptyLines(merged.join('\n'));
+      logError(`Cloudflare refine OCR: merge step returned ${merged.length} lines for image ${itemIndex + 1}, using the new scan`);
+    } catch (err) {
+      if (/stopped by user/i.test(err.message)) throw err;
+      logError(`Cloudflare refine OCR: merge step failed for image ${itemIndex + 1}: ${err.message}`);
+    }
+    return fresh;
   }
 
   async function cfRunRefineTranslate(imageData, itemIndex, userInstruction) {
